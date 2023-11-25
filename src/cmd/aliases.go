@@ -6,9 +6,13 @@ import (
 
 	"github.com/git-town/git-town/v10/src/cli/flags"
 	"github.com/git-town/git-town/v10/src/config"
-	"github.com/git-town/git-town/v10/src/execute"
+	"github.com/git-town/git-town/v10/src/domain"
 	"github.com/git-town/git-town/v10/src/git"
 	"github.com/git-town/git-town/v10/src/messages"
+	"github.com/git-town/git-town/v10/src/vm/interpreter"
+	"github.com/git-town/git-town/v10/src/vm/opcode"
+	"github.com/git-town/git-town/v10/src/vm/program"
+	"github.com/git-town/git-town/v10/src/vm/runstate"
 	"github.com/spf13/cobra"
 )
 
@@ -39,47 +43,49 @@ func aliasesCommand() *cobra.Command {
 }
 
 func executeAliases(arg string, verbose bool) error {
-	repo, err := execute.OpenRepo(execute.OpenRepoArgs{
-		Verbose:          verbose,
-		DryRun:           false,
-		OmitBranchNames:  true,
-		PrintCommands:    true,
-		ValidateIsOnline: false,
-		ValidateGitRepo:  false,
-	})
-	if err != nil {
-		return err
+	runState := runstate.RunState{
+		Command:             "aliases",
+		InitialActiveBranch: domain.EmptyLocalBranchName(),
+		RunProgram:          aliasesProgram(arg),
 	}
+	return interpreter.Execute(interpreter.ExecuteArgs{
+		RunState:                &runState,
+		Run:                     &repo.Runner,
+		Connector:               nil,
+		Verbose:                 verbose,
+		RootDir:                 repo.RootDir,
+		InitialBranchesSnapshot: initialBranchesSnapshot,
+		InitialConfigSnapshot:   repo.ConfigSnapshot,
+		InitialStashSnapshot:    initialStashSnapshot,
+		Lineage:                 config.lineage,
+		NoPushHook:              !config.pushHook,
+	})
+}
+
+func aliasesProgram(arg string) program.Program {
+	prog := program.Program{}
 	switch strings.ToLower(arg) {
 	case "add":
-		return addAliases(&repo.Runner)
+		addAliasesProgram(&prog)
 	case "remove":
-		return removeAliases(&repo.Runner)
+		removeAliasesProgram(&prog, &repo.Runner)
+	default:
+		return fmt.Errorf(messages.InputAddOrRemove, arg)
 	}
-	return fmt.Errorf(messages.InputAddOrRemove, arg)
+	return prog
 }
 
-func addAliases(run *git.ProdRunner) error {
+func addAliasesProgram(prog *program.Program) {
 	for _, alias := range config.Aliases() {
-		err := run.Frontend.AddGitAlias(alias)
-		if err != nil {
-			return err
-		}
+		prog.Add(&opcode.AddGitAlias{Alias: alias})
 	}
-	fmt.Printf(messages.CommandsRun, run.CommandsCounter.Count())
-	return nil
 }
 
-func removeAliases(run *git.ProdRunner) error {
+func removeAliasesProgram(prog *program.Program, run *git.ProdRunner) {
 	for _, alias := range config.Aliases() {
 		existingAlias := run.Config.GitAlias(alias)
 		if existingAlias == "town "+alias.String() {
-			err := run.Frontend.RemoveGitAlias(alias)
-			if err != nil {
-				return err
-			}
+			prog.Add(&opcode.RemoveGitAlias{Alias: alias})
 		}
 	}
-	fmt.Printf(messages.CommandsRun, run.CommandsCounter.Count())
-	return nil
 }

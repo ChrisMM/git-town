@@ -47,6 +47,7 @@ func Types() []shared.Opcode {
 	return []shared.Opcode{
 		&AbortMerge{},
 		&AbortRebase{},
+		&AddGitAlias{},
 		&AddToPerennialBranches{},
 		&ChangeParent{},
 		&Checkout{},
@@ -81,6 +82,7 @@ func Types() []shared.Opcode {
 		&RebaseParent{},
 		&RemoveBranchFromLineage{},
 		&RemoveFromPerennialBranches{},
+		&RemoveGitAlias{},
 		&RemoveGlobalConfig{},
 		&RemoveLocalConfig{},
 		&ResetCurrentBranchToSHA{},

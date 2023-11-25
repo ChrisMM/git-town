@@ -42,6 +42,7 @@ func TestLoadSave(t *testing.T) {
 			RunProgram: program.Program{
 				&opcode.AbortMerge{},
 				&opcode.AbortRebase{},
+				&opcode.AddGitAlias{Alias: config.AliasHack},
 				&opcode.AddToPerennialBranches{Branch: domain.NewLocalBranchName("branch")},
 				&opcode.ChangeParent{
 					Branch: domain.NewLocalBranchName("branch"),
@@ -113,6 +114,9 @@ func TestLoadSave(t *testing.T) {
 				&opcode.RemoveFromPerennialBranches{
 					Branch: domain.NewLocalBranchName("branch"),
 				},
+				&opcode.RemoveGitAlias{
+					Alias: config.AliasSync,
+				},
 				&opcode.RemoveGlobalConfig{
 					Key: config.KeyOffline,
 				},
@@ -176,6 +180,12 @@ func TestLoadSave(t *testing.T) {
     {
       "data": {},
       "type": "AbortRebase"
+    },
+    {
+      "data": {
+        "Alias": "append",
+      },
+      "type": "AddGitAlias",
     },
     {
       "data": {
@@ -345,6 +355,12 @@ func TestLoadSave(t *testing.T) {
         "Branch": "branch"
       },
       "type": "RemoveFromPerennialBranches"
+    },
+    {
+      "data": {
+        "Alias": "sync",
+      },
+      "type": "RemoveGitAlias",
     },
     {
       "data": {
