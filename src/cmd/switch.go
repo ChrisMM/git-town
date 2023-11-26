@@ -63,6 +63,16 @@ func executeSwitch(verbose bool) error {
 	if err != nil || exit {
 		return err
 	}
+	branches.Types, lineage, err = execute.EnsureKnownBranchesAncestry(execute.EnsureKnownBranchesAncestryArgs{
+		AllBranches: branches.All.LocalBranches(),
+		BranchTypes: branches.Types,
+		Lineage:     lineage,
+		MainBranch:  repo.Runner.Config.MainBranch(),
+		Runner:      &repo.Runner,
+	})
+	if err != nil {
+		return err
+	}
 	newBranch, validChoice, err := queryBranch(branches.Initial, lineage)
 	if err != nil {
 		return err
