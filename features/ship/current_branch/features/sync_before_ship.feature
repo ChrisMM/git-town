@@ -8,16 +8,17 @@ Feature: sync-before-ship disabled
     And Git Town setting "sync-before-ship" is "false"
     When I run "git-town ship -m 'feature done'"
 
+  @this
   Scenario: result
     Then it runs the commands
-      | BRANCH  | COMMAND                            |
-      | feature | git fetch --prune --tags           |
-      |         | git checkout main                  |
-      | main    | git merge --squash feature         |
-      |         | git commit -m "feature done"       |
-      |         | git push                           |
-      |         | git push origin :feature           |
-      |         | git branch -D feature              |
+      | BRANCH  | COMMAND                      |
+      | feature | git fetch --prune --tags     |
+      |         | git checkout main            |
+      | main    | git merge --squash feature   |
+      |         | git commit -m "feature done" |
+      |         | git push                     |
+      |         | git push origin :feature     |
+      |         | git branch -D feature        |
     And the current branch is now "main"
     And the branches are now
       | REPOSITORY    | BRANCHES |
