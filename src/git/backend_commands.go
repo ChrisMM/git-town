@@ -8,27 +8,28 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/git-town/git-town/v10/src/domain"
-	"github.com/git-town/git-town/v10/src/gohacks/cache"
-	"github.com/git-town/git-town/v10/src/gohacks/stringslice"
-	"github.com/git-town/git-town/v10/src/messages"
+	"github.com/git-town/git-town/v11/src/config"
+	"github.com/git-town/git-town/v11/src/domain"
+	"github.com/git-town/git-town/v11/src/gohacks/cache"
+	"github.com/git-town/git-town/v11/src/gohacks/stringslice"
+	"github.com/git-town/git-town/v11/src/messages"
 )
 
 type BackendRunner interface {
 	Query(executable string, args ...string) (string, error)
 	QueryTrim(executable string, args ...string) (string, error)
 	Run(executable string, args ...string) error
-	RunMany([][]string) error
+	RunMany(commands [][]string) error
 }
 
 // BackendCommands are Git commands that Git Town executes to determine which frontend commands to run.
 // They don't change the user's repo, execute instantaneously, and Git Town needs to know their output.
 // They are invisible to the end user unless the "verbose" option is set.
 type BackendCommands struct {
-	BackendRunner                         // executes shell commands in the directory of the Git repo
-	Config             *RepoConfig        // the known state of the Git repository
-	CurrentBranchCache *cache.LocalBranch // caches the currently checked out Git branch
-	RemotesCache       *cache.Remotes     // caches Git remotes
+	BackendRunner                                     // executes shell commands in the directory of the Git repo
+	*config.GitTown                                   // the known state of the Git repository
+	CurrentBranchCache *cache.LocalBranchWithPrevious // caches the currently checked out Git branch
+	RemotesCache       *cache.Remotes                 // caches Git remotes
 }
 
 // Author provides the locally Git configured user.
@@ -105,7 +106,7 @@ func (self *BackendCommands) BranchesSnapshot() (domain.BranchesSnapshot, error)
 
 // CheckoutBranch checks out the Git branch with the given name.
 func (self *BackendCommands) CheckoutBranch(name domain.LocalBranchName) error {
-	if !self.Config.DryRun {
+	if !self.GitTown.DryRun {
 		err := self.CheckoutBranchUncached(name)
 		if err != nil {
 			return err
@@ -210,7 +211,16 @@ func ParseVerboseBranchesOutput(output string) (domain.BranchInfos, domain.Local
 			checkedoutBranch = domain.NewLocalBranchName(branchName)
 		}
 		syncStatus, trackingBranchName := determineSyncStatus(branchName, remoteText)
-		if isLocalBranchName(branchName) {
+		switch {
+		case line[0] == '+':
+			result = append(result, domain.BranchInfo{
+				LocalName:  domain.NewLocalBranchName(branchName),
+				LocalSHA:   sha,
+				SyncStatus: domain.SyncStatusOtherWorktree,
+				RemoteName: trackingBranchName,
+				RemoteSHA:  domain.EmptySHA(),
+			})
+		case isLocalBranchName(branchName):
 			result = append(result, domain.BranchInfo{
 				LocalName:  domain.NewLocalBranchName(branchName),
 				LocalSHA:   sha,
@@ -218,7 +228,7 @@ func ParseVerboseBranchesOutput(output string) (domain.BranchInfos, domain.Local
 				RemoteName: trackingBranchName,
 				RemoteSHA:  domain.EmptySHA(), // will be added later
 			})
-		} else {
+		default:
 			remoteBranchName := domain.NewRemoteBranchName(strings.TrimPrefix(branchName, "remotes/"))
 			existingBranchWithTracking := result.FindByRemoteName(remoteBranchName)
 			if existingBranchWithTracking != nil {
@@ -343,7 +353,7 @@ func (self *BackendCommands) CreateFeatureBranch(name domain.LocalBranchName) er
 
 // CurrentBranch provides the name of the currently checked out branch.
 func (self *BackendCommands) CurrentBranch() (domain.LocalBranchName, error) {
-	if self.Config.DryRun {
+	if self.GitTown.DryRun {
 		return self.CurrentBranchCache.Value(), nil
 	}
 	if !self.CurrentBranchCache.Initialized() {
@@ -379,29 +389,6 @@ func (self *BackendCommands) CurrentBranchUncached() (domain.LocalBranchName, er
 // CurrentSHA provides the SHA of the currently checked out branch/commit.
 func (self *BackendCommands) CurrentSHA() (domain.SHA, error) {
 	return self.SHAForBranch(domain.NewBranchName("HEAD"))
-}
-
-// ExpectedPreviouslyCheckedOutBranch returns what is the expected previously checked out branch
-// given the inputs.
-func (self *BackendCommands) ExpectedPreviouslyCheckedOutBranch(initialPreviouslyCheckedOutBranch, initialBranch, mainBranch domain.LocalBranchName) (domain.LocalBranchName, error) {
-	// TODO: try to avoid repeated lookups to self.HasLocalBranch
-	if self.HasLocalBranch(initialPreviouslyCheckedOutBranch) {
-		currentBranch, err := self.CurrentBranch()
-		if err != nil {
-			return domain.EmptyLocalBranchName(), err
-		}
-		if currentBranch == initialBranch {
-			return initialPreviouslyCheckedOutBranch, nil
-		}
-		if initialBranch == initialPreviouslyCheckedOutBranch {
-			return initialBranch, nil
-		}
-		if self.HasLocalBranch(initialBranch) {
-			return initialBranch, nil
-		}
-		return initialPreviouslyCheckedOutBranch, nil
-	}
-	return mainBranch, nil
 }
 
 func (self *BackendCommands) FirstExistingBranch(branches domain.LocalBranchNames, mainBranch domain.LocalBranchName) domain.LocalBranchName {
@@ -481,11 +468,11 @@ func (self *BackendCommands) RemotesUncached() (domain.Remotes, error) {
 
 // RemoveOutdatedConfiguration removes outdated Git Town configuration.
 func (self *BackendCommands) RemoveOutdatedConfiguration(allBranches domain.BranchInfos) error {
-	for child, parent := range self.Config.Lineage(self.Config.RemoveLocalConfigValue) {
+	for child, parent := range self.GitTown.Lineage(self.GitTown.RemoveLocalConfigValue) {
 		hasChildBranch := allBranches.HasLocalBranch(child)
 		hasParentBranch := allBranches.HasLocalBranch(parent)
 		if !hasChildBranch || !hasParentBranch {
-			self.Config.RemoveParent(child)
+			self.GitTown.RemoveParent(child)
 		}
 	}
 	return nil
@@ -499,11 +486,13 @@ func (self *BackendCommands) RepoStatus() (domain.RepoStatus, error) {
 	}
 	hasConflicts := strings.Contains(output, "Unmerged paths")
 	hasOpenChanges := outputIndicatesOpenChanges(output)
+	hasUntrackedChanges := outputIndicatesUntrackedChanges(output)
 	rebaseInProgress := outputIndicatesRebaseInProgress(output)
 	return domain.RepoStatus{
 		Conflicts:        hasConflicts,
 		OpenChanges:      hasOpenChanges,
 		RebaseInProgress: rebaseInProgress,
+		UntrackedChanges: hasUntrackedChanges,
 	}, nil
 }
 
@@ -603,4 +592,8 @@ func outputIndicatesOpenChanges(output string) bool {
 
 func outputIndicatesRebaseInProgress(output string) bool {
 	return strings.Contains(output, "rebase in progress") || strings.Contains(output, "You are currently rebasing")
+}
+
+func outputIndicatesUntrackedChanges(output string) bool {
+	return strings.Contains(output, "Untracked files:")
 }

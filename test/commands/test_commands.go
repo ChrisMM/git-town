@@ -7,15 +7,15 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/git-town/git-town/v10/src/config"
-	"github.com/git-town/git-town/v10/src/domain"
-	prodgit "github.com/git-town/git-town/v10/src/git"
-	"github.com/git-town/git-town/v10/src/gohacks/slice"
-	"github.com/git-town/git-town/v10/src/gohacks/stringslice"
-	"github.com/git-town/git-town/v10/test/asserts"
-	"github.com/git-town/git-town/v10/test/datatable"
-	"github.com/git-town/git-town/v10/test/git"
-	"github.com/git-town/git-town/v10/test/subshell"
+	"github.com/git-town/git-town/v11/src/config/configdomain"
+	"github.com/git-town/git-town/v11/src/domain"
+	prodgit "github.com/git-town/git-town/v11/src/git"
+	"github.com/git-town/git-town/v11/src/gohacks/slice"
+	"github.com/git-town/git-town/v11/src/gohacks/stringslice"
+	"github.com/git-town/git-town/v11/test/asserts"
+	"github.com/git-town/git-town/v11/test/datatable"
+	"github.com/git-town/git-town/v11/test/git"
+	"github.com/git-town/git-town/v11/test/subshell"
 )
 
 // TestCommands defines Git commands used only in test code.
@@ -36,16 +36,8 @@ func (self *TestCommands) AddSubmodule(url string) {
 	self.MustRun("git", "commit", "-m", "added submodule")
 }
 
-// BranchHierarchyTable provides the currently configured branch hierarchy information as a DataTable.
-func (self *TestCommands) BranchHierarchyTable() datatable.DataTable {
-	result := datatable.DataTable{}
-	self.Config.Reload()
-	lineage := self.Config.Lineage(self.Config.RemoveLocalConfigValue)
-	result.AddRow("BRANCH", "PARENT")
-	for _, branchName := range lineage.BranchNames() {
-		result.AddRow(branchName.String(), lineage[branchName].String())
-	}
-	return result
+func (self *TestCommands) AddWorktree(path string, branch domain.LocalBranchName) {
+	self.MustRun("git", "worktree", "add", path, branch.String())
 }
 
 // .CheckoutBranch checks out the Git branch with the given name in this repo.
@@ -76,6 +68,9 @@ func (self *TestCommands) Commits(fields []string, mainBranch domain.LocalBranch
 	asserts.NoError(err)
 	result := []git.Commit{}
 	for _, branch := range branches {
+		if strings.HasPrefix(branch.String(), "+ ") {
+			continue
+		}
 		commits := self.CommitsInBranch(branch, fields)
 		result = append(result, commits...)
 	}
@@ -122,7 +117,7 @@ func (self *TestCommands) CreateBranch(name, parent domain.LocalBranchName) {
 // The parent branch must already exist.
 func (self *TestCommands) CreateChildFeatureBranch(branch domain.LocalBranchName, parent domain.LocalBranchName) {
 	self.CreateBranch(branch, parent)
-	asserts.NoError(self.Config.SetParent(branch, parent))
+	asserts.NoError(self.GitTown.SetParent(branch, parent))
 }
 
 // CreateCommit creates a commit with the given properties in this Git repo.
@@ -151,7 +146,7 @@ func (self *TestCommands) CreatePerennialBranches(names ...domain.LocalBranchNam
 	for _, name := range names {
 		self.CreateBranch(name, domain.NewLocalBranchName("main"))
 	}
-	asserts.NoError(self.Config.AddToPerennialBranches(names...))
+	asserts.NoError(self.GitTown.AddToPerennialBranches(names...))
 }
 
 // CreateStandaloneTag creates a tag not on a branch.
@@ -168,11 +163,6 @@ func (self *TestCommands) CreateStandaloneTag(name string) {
 // CreateTag creates a tag with the given name.
 func (self *TestCommands) CreateTag(name string) {
 	self.MustRun("git", "tag", "-a", name, "-m", name)
-}
-
-// DeleteMainBranchConfiguration removes the configuration for which branch is the main branch.
-func (self *TestCommands) DeleteMainBranchConfiguration() {
-	self.MustRun("git", "config", "--unset", config.KeyMainBranch.String())
 }
 
 // Fetch retrieves the updates from the origin repo.
@@ -264,7 +254,29 @@ func (self *TestCommands) HasGitTownConfigNow() bool {
 	if err != nil {
 		return false
 	}
-	return output != ""
+	if output != "" {
+		return true
+	}
+	output, err = self.Query("git", "config", "--local", "--get-regex", "git-town-branch")
+	if err != nil {
+		return false
+	}
+	if output != "" {
+		return true
+	}
+	return false
+}
+
+// LineageTable provides the currently configured lineage information as a DataTable.
+func (self *TestCommands) LineageTable() datatable.DataTable {
+	result := datatable.DataTable{}
+	self.GitTown.Reload()
+	lineage := self.GitTown.Lineage(self.GitTown.RemoveLocalConfigValue)
+	result.AddRow("BRANCH", "PARENT")
+	for _, branchName := range lineage.BranchNames() {
+		result.AddRow(branchName.String(), lineage[branchName].String())
+	}
+	return result
 }
 
 // LocalBranches provides the names of all branches in the local repository,
@@ -314,6 +326,16 @@ func (self *TestCommands) RemoveBranch(name domain.LocalBranchName) {
 	self.MustRun("git", "branch", "-D", name.String())
 }
 
+// DeleteMainBranchConfiguration removes the configuration for which branch is the main branch.
+func (self *TestCommands) RemoveMainBranchConfiguration() {
+	self.MustRun("git", "config", "--unset", configdomain.KeyMainBranch.String())
+}
+
+// RemovePerennialBranchConfiguration removes the configuration entry for the perennial branches.
+func (self *TestCommands) RemovePerennialBranchConfiguration() error {
+	return self.RemoveLocalConfigValue(configdomain.KeyPerennialBranches)
+}
+
 // RemoveRemote deletes the Git remote with the given name.
 func (self *TestCommands) RemoveRemote(name domain.Remote) {
 	self.RemotesCache.Invalidate()
@@ -336,6 +358,11 @@ func (self *TestCommands) SHAForCommit(name string) string {
 		log.Fatalf("cannot find the SHA of commit %q", name)
 	}
 	return strings.Split(output, "\n")[0]
+}
+
+// SetColorUI configures whether Git output contains color codes.
+func (self *TestCommands) SetColorUI(value string) error {
+	return self.Run("git", "config", "color.ui", value)
 }
 
 // StageFiles adds the file with the given name to the Git index.

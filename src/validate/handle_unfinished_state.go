@@ -3,16 +3,16 @@ package validate
 import (
 	"fmt"
 
-	"github.com/git-town/git-town/v10/src/cli/dialog"
-	"github.com/git-town/git-town/v10/src/config"
-	"github.com/git-town/git-town/v10/src/domain"
-	"github.com/git-town/git-town/v10/src/git"
-	"github.com/git-town/git-town/v10/src/hosting"
-	"github.com/git-town/git-town/v10/src/messages"
-	"github.com/git-town/git-town/v10/src/undo"
-	"github.com/git-town/git-town/v10/src/vm/interpreter"
-	"github.com/git-town/git-town/v10/src/vm/runstate"
-	"github.com/git-town/git-town/v10/src/vm/statefile"
+	"github.com/git-town/git-town/v11/src/cli/dialog"
+	"github.com/git-town/git-town/v11/src/config/configdomain"
+	"github.com/git-town/git-town/v11/src/domain"
+	"github.com/git-town/git-town/v11/src/git"
+	"github.com/git-town/git-town/v11/src/hosting"
+	"github.com/git-town/git-town/v11/src/messages"
+	"github.com/git-town/git-town/v11/src/undo"
+	"github.com/git-town/git-town/v11/src/vm/interpreter"
+	"github.com/git-town/git-town/v11/src/vm/runstate"
+	"github.com/git-town/git-town/v11/src/vm/statefile"
 )
 
 // HandleUnfinishedState checks for unfinished state on disk, handles it, and signals whether to continue execution of the originally intended steps.
@@ -38,7 +38,7 @@ func HandleUnfinishedState(args UnfinishedStateArgs) (quit bool, err error) {
 		return discardRunstate(args.RootDir)
 	case dialog.ResponseContinue:
 		return continueRunstate(runState, args)
-	case dialog.ResponseAbort:
+	case dialog.ResponseUndo:
 		return abortRunstate(runState, args)
 	case dialog.ResponseSkip:
 		return skipRunstate(runState, args)
@@ -52,11 +52,11 @@ func HandleUnfinishedState(args UnfinishedStateArgs) (quit bool, err error) {
 type UnfinishedStateArgs struct {
 	Connector               hosting.Connector
 	Verboe                  bool
-	Lineage                 config.Lineage
+	Lineage                 configdomain.Lineage
 	InitialBranchesSnapshot domain.BranchesSnapshot
 	InitialConfigSnapshot   undo.ConfigSnapshot
 	InitialStashSnapshot    domain.StashSnapshot
-	PushHook                bool
+	PushHook                configdomain.PushHook
 	RootDir                 domain.RepoRootDir
 	Run                     *git.ProdRunner
 }
@@ -70,7 +70,7 @@ func abortRunstate(runState *runstate.RunState, args UnfinishedStateArgs) (bool,
 		InitialBranchesSnapshot: args.InitialBranchesSnapshot,
 		InitialConfigSnapshot:   args.InitialConfigSnapshot,
 		InitialStashSnapshot:    args.InitialStashSnapshot,
-		NoPushHook:              !args.PushHook,
+		NoPushHook:              args.PushHook.Negate(),
 		RootDir:                 args.RootDir,
 		Run:                     args.Run,
 		RunState:                &abortRunState,
@@ -92,7 +92,7 @@ func continueRunstate(runState *runstate.RunState, args UnfinishedStateArgs) (bo
 		InitialConfigSnapshot:   args.InitialConfigSnapshot,
 		InitialStashSnapshot:    args.InitialStashSnapshot,
 		Lineage:                 args.Lineage,
-		NoPushHook:              !args.PushHook,
+		NoPushHook:              args.PushHook.Negate(),
 		RootDir:                 args.RootDir,
 		Run:                     args.Run,
 		RunState:                runState,
@@ -113,7 +113,7 @@ func skipRunstate(runState *runstate.RunState, args UnfinishedStateArgs) (bool, 
 		InitialConfigSnapshot:   args.InitialConfigSnapshot,
 		InitialStashSnapshot:    args.InitialStashSnapshot,
 		Lineage:                 args.Lineage,
-		NoPushHook:              !args.PushHook,
+		NoPushHook:              args.PushHook.Negate(),
 		RootDir:                 args.RootDir,
 		Run:                     args.Run,
 		RunState:                &skipRunState,

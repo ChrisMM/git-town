@@ -5,8 +5,8 @@ package opcode
 import (
 	"errors"
 
-	"github.com/git-town/git-town/v10/src/gohacks"
-	"github.com/git-town/git-town/v10/src/vm/shared"
+	"github.com/git-town/git-town/v11/src/gohacks"
+	"github.com/git-town/git-town/v11/src/vm/shared"
 )
 
 // undeclaredOpcodeMethods can be added to structs in this package to satisfy the shared.Opcode interface even if they don't declare all required methods.
@@ -16,7 +16,7 @@ func (self *undeclaredOpcodeMethods) CreateAbortProgram() []shared.Opcode {
 	return []shared.Opcode{}
 }
 
-func (self *undeclaredOpcodeMethods) CreateAutomaticAbortError() error {
+func (self *undeclaredOpcodeMethods) CreateAutomaticUndoError() error {
 	return errors.New("")
 }
 
@@ -28,7 +28,7 @@ func (self *undeclaredOpcodeMethods) Run(_ shared.RunArgs) error {
 	return nil
 }
 
-func (self *undeclaredOpcodeMethods) ShouldAutomaticallyAbortOnError() bool {
+func (self *undeclaredOpcodeMethods) ShouldAutomaticallyUndoOnError() bool {
 	return false
 }
 
@@ -91,6 +91,7 @@ func Types() []shared.Opcode {
 		&SetGlobalConfig{},
 		&SetLocalConfig{},
 		&SetParent{},
+		&SetParentIfBranchExists{},
 		&SkipCurrentBranch{},
 		&StashOpenChanges{},
 		&SquashMerge{},

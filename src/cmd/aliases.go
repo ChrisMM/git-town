@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/git-town/git-town/v10/src/cli/flags"
-	"github.com/git-town/git-town/v10/src/config"
-	"github.com/git-town/git-town/v10/src/execute"
-	"github.com/git-town/git-town/v10/src/git"
-	"github.com/git-town/git-town/v10/src/messages"
+	"github.com/git-town/git-town/v11/src/cli/flags"
+	"github.com/git-town/git-town/v11/src/config/configdomain"
+	"github.com/git-town/git-town/v11/src/execute"
+	"github.com/git-town/git-town/v11/src/git"
+	"github.com/git-town/git-town/v11/src/messages"
 	"github.com/spf13/cobra"
 )
 
@@ -52,15 +52,15 @@ func executeAliases(arg string, verbose bool) error {
 	}
 	switch strings.ToLower(arg) {
 	case "add":
-		return addAliases(&repo.Runner)
+		return addAliases(repo.Runner)
 	case "remove":
-		return removeAliases(&repo.Runner)
+		return removeAliases(repo.Runner)
 	}
 	return fmt.Errorf(messages.InputAddOrRemove, arg)
 }
 
 func addAliases(run *git.ProdRunner) error {
-	for _, alias := range config.Aliases() {
+	for _, alias := range configdomain.Aliases() {
 		err := run.Frontend.AddGitAlias(alias)
 		if err != nil {
 			return err
@@ -71,8 +71,8 @@ func addAliases(run *git.ProdRunner) error {
 }
 
 func removeAliases(run *git.ProdRunner) error {
-	for _, alias := range config.Aliases() {
-		existingAlias := run.Config.GitAlias(alias)
+	for _, alias := range configdomain.Aliases() {
+		existingAlias := run.GitTown.GitAlias(alias)
 		if existingAlias == "town "+alias.String() {
 			err := run.Frontend.RemoveGitAlias(alias)
 			if err != nil {

@@ -1,8 +1,8 @@
 package opcode
 
 import (
-	"github.com/git-town/git-town/v10/src/domain"
-	"github.com/git-town/git-town/v10/src/vm/shared"
+	"github.com/git-town/git-town/v11/src/domain"
+	"github.com/git-town/git-town/v11/src/vm/shared"
 )
 
 // RebaseBranch rebases the current branch
@@ -17,7 +17,9 @@ func (self *RebaseBranch) CreateAbortProgram() []shared.Opcode {
 }
 
 func (self *RebaseBranch) CreateContinueProgram() []shared.Opcode {
-	return []shared.Opcode{&ContinueRebase{}}
+	return []shared.Opcode{
+		&ContinueRebase{},
+	}
 }
 
 func (self *RebaseBranch) Run(args shared.RunArgs) error {

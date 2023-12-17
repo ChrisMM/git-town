@@ -3,13 +3,19 @@ package opcode
 import (
 	"fmt"
 
-	"github.com/git-town/git-town/v10/src/vm/shared"
+	"github.com/git-town/git-town/v11/src/vm/shared"
 )
 
 // CommitOpenChanges commits all open changes as a new commit.
 // It does not ask the user for a commit message, but chooses one automatically.
 type CommitOpenChanges struct {
 	undeclaredOpcodeMethods
+}
+
+func (self *CommitOpenChanges) CreateContinueProgram() []shared.Opcode {
+	return []shared.Opcode{
+		self,
+	}
 }
 
 func (self *CommitOpenChanges) Run(args shared.RunArgs) error {

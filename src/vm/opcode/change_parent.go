@@ -3,9 +3,9 @@ package opcode
 import (
 	"fmt"
 
-	"github.com/git-town/git-town/v10/src/domain"
-	"github.com/git-town/git-town/v10/src/messages"
-	"github.com/git-town/git-town/v10/src/vm/shared"
+	"github.com/git-town/git-town/v11/src/domain"
+	"github.com/git-town/git-town/v11/src/messages"
+	"github.com/git-town/git-town/v11/src/vm/shared"
 )
 
 // ChangeParent changes the parent of the given branch to the given parent.
@@ -17,7 +17,7 @@ type ChangeParent struct {
 }
 
 func (self *ChangeParent) Run(args shared.RunArgs) error {
-	err := args.Runner.Config.SetParent(self.Branch, self.Parent)
+	err := args.Runner.GitTown.SetParent(self.Branch, self.Parent)
 	if err != nil {
 		return err
 	}

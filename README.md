@@ -6,7 +6,8 @@
   </picture>
   <br>
   <img src="https://github.com/git-town/git-town/actions/workflows/cuke.yml/badge.svg" alt="end-to-end test status">
-  <img src="https://github.com/git-town/git-town/actions/workflows/lint_unit.yml/badge.svg" alt="unit test status">
+  <img src="https://github.com/git-town/git-town/actions/workflows/unit.yml/badge.svg" alt="unit test status">
+  <img src="https://github.com/git-town/git-town/actions/workflows/lint_docs.yml/badge.svg" alt="linters and documentation test status">
   <a href="https://goreportcard.com/report/github.com/git-town/git-town"><img src="https://goreportcard.com/badge/github.com/git-town/git-town" alt="Go report card status"></a>
   <img src="https://api.netlify.com/api/v1/badges/c2ea5505-be48-42e5-bb8a-b807d18d99ed/deploy-status" alt="Netlify deploy status">
 </p>
@@ -22,8 +23,8 @@ Flow, and trunk-based development. Check out
   up-to-date feature branch off the main branch
 - [git sync](https://www.git-town.com/commands/sync.html) - update the current
   branch with all ongoing changes
-- [git new-pull-request](https://www.git-town.com/commands/new-pull-request.html) -
-  create a new proposal
+- [git propose](https://www.git-town.com/commands/propose.html) - propose to
+  ship a Git branch
 - [git ship](https://www.git-town.com/commands/ship.html) - merge a completed
   feature branch and remove it
 

@@ -4,10 +4,10 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/git-town/git-town/v10/src/domain"
-	"github.com/git-town/git-town/v10/src/vm/opcode"
-	"github.com/git-town/git-town/v10/src/vm/program"
-	"github.com/git-town/git-town/v10/src/vm/runstate"
+	"github.com/git-town/git-town/v11/src/domain"
+	"github.com/git-town/git-town/v11/src/vm/opcode"
+	"github.com/git-town/git-town/v11/src/vm/program"
+	"github.com/git-town/git-town/v11/src/vm/runstate"
 	"github.com/shoenig/test/must"
 )
 
@@ -47,7 +47,6 @@ func TestRunState(t *testing.T) {
 		want := `
 {
   "Command": "sync",
-  "IsAbort": false,
   "IsUndo": false,
   "AbortProgram": [
     {
@@ -85,9 +84,9 @@ func TestRunState(t *testing.T) {
   "UndoablePerennialCommits": []
 }`[1:]
 		must.EqOp(t, want, string(encoded))
-		newRunState := &runstate.RunState{} //nolint:exhaustruct
+		newRunState := runstate.EmptyRunState()
 		err = json.Unmarshal(encoded, &newRunState)
 		must.NoError(t, err)
-		must.Eq(t, runState, newRunState)
+		must.Eq(t, runState, &newRunState)
 	})
 }

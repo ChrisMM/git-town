@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/git-town/git-town/v10/src/config"
-	"github.com/git-town/git-town/v10/src/domain"
-	"github.com/git-town/git-town/v10/src/git/giturl"
-	"github.com/git-town/git-town/v10/src/hosting/common"
-	"github.com/git-town/git-town/v10/src/messages"
+	"github.com/git-town/git-town/v11/src/config/configdomain"
+	"github.com/git-town/git-town/v11/src/domain"
+	"github.com/git-town/git-town/v11/src/git/giturl"
+	"github.com/git-town/git-town/v11/src/hosting/common"
+	"github.com/git-town/git-town/v11/src/messages"
 	"github.com/xanzy/go-gitlab"
 )
 
@@ -22,9 +22,9 @@ type Connector struct {
 
 func (self *Connector) FindProposal(branch, target domain.LocalBranchName) (*domain.Proposal, error) {
 	opts := &gitlab.ListProjectMergeRequestsOptions{
-		State:        gitlab.String("opened"),
-		SourceBranch: gitlab.String(branch.String()),
-		TargetBranch: gitlab.String(target.String()),
+		State:        gitlab.Ptr("opened"),
+		SourceBranch: gitlab.Ptr(branch.String()),
+		TargetBranch: gitlab.Ptr(target.String()),
 	}
 	mergeRequests, _, err := self.client.MergeRequests.ListProjectMergeRequests(self.projectPath(), opts)
 	if err != nil {
@@ -47,10 +47,10 @@ func (self *Connector) SquashMergeProposal(number int, message string) (mergeSHA
 	self.log.Start(messages.HostingGitlabMergingViaAPI, number)
 	// the GitLab API wants the full commit message in the body
 	result, _, err := self.client.MergeRequests.AcceptMergeRequest(self.projectPath(), number, &gitlab.AcceptMergeRequestOptions{
-		SquashCommitMessage: gitlab.String(message),
-		Squash:              gitlab.Bool(true),
+		SquashCommitMessage: gitlab.Ptr(message),
+		Squash:              gitlab.Ptr(true),
 		// the branch will be deleted by Git Town
-		ShouldRemoveSourceBranch: gitlab.Bool(false),
+		ShouldRemoveSourceBranch: gitlab.Ptr(false),
 	})
 	if err != nil {
 		self.log.Failed(err)
@@ -63,7 +63,7 @@ func (self *Connector) SquashMergeProposal(number int, message string) (mergeSHA
 func (self *Connector) UpdateProposalTarget(number int, target domain.LocalBranchName) error {
 	self.log.Start(messages.HostingGitlabUpdateMRViaAPI, number, target)
 	_, _, err := self.client.MergeRequests.UpdateMergeRequest(self.projectPath(), number, &gitlab.UpdateMergeRequestOptions{
-		TargetBranch: gitlab.String(target.String()),
+		TargetBranch: gitlab.Ptr(target.String()),
 	})
 	if err != nil {
 		self.log.Failed(err)
@@ -76,18 +76,20 @@ func (self *Connector) UpdateProposalTarget(number int, target domain.LocalBranc
 // NewGitlabConfig provides GitLab configuration data if the current repo is hosted on GitLab,
 // otherwise nil.
 func NewConnector(args NewConnectorArgs) (*Connector, error) {
-	if args.OriginURL == nil || (args.OriginURL.Host != "gitlab.com" && args.HostingService != config.HostingGitLab) {
+	if args.OriginURL == nil || (args.OriginURL.Host != "gitlab.com" && args.HostingService != configdomain.HostingGitLab) {
 		return nil, nil //nolint:nilnil
 	}
-	gitlabConfig := Config{common.Config{
-		APIToken:     args.APIToken,
-		Hostname:     args.OriginURL.Host,
-		Organization: args.OriginURL.Org,
-		Repository:   args.OriginURL.Repo,
-	}}
+	gitlabConfig := Config{
+		Config: common.Config{
+			Hostname:     args.OriginURL.Host,
+			Organization: args.OriginURL.Org,
+			Repository:   args.OriginURL.Repo,
+		},
+		APIToken: args.APIToken,
+	}
 	clientOptFunc := gitlab.WithBaseURL(gitlabConfig.baseURL())
 	httpClient := gitlab.WithHTTPClient(&http.Client{})
-	client, err := gitlab.NewOAuthClient(gitlabConfig.APIToken, httpClient, clientOptFunc)
+	client, err := gitlab.NewOAuthClient(gitlabConfig.APIToken.String(), httpClient, clientOptFunc)
 	if err != nil {
 		return nil, err
 	}
@@ -100,9 +102,9 @@ func NewConnector(args NewConnectorArgs) (*Connector, error) {
 }
 
 type NewConnectorArgs struct {
-	HostingService config.Hosting
+	HostingService configdomain.Hosting
 	OriginURL      *giturl.Parts
-	APIToken       string
+	APIToken       configdomain.GitLabToken
 	Log            common.Log
 }
 

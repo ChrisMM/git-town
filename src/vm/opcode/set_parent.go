@@ -1,8 +1,8 @@
 package opcode
 
 import (
-	"github.com/git-town/git-town/v10/src/domain"
-	"github.com/git-town/git-town/v10/src/vm/shared"
+	"github.com/git-town/git-town/v11/src/domain"
+	"github.com/git-town/git-town/v11/src/vm/shared"
 )
 
 // SetParent sets the given parent branch as the parent of the given branch.
@@ -14,5 +14,5 @@ type SetParent struct {
 }
 
 func (self *SetParent) Run(args shared.RunArgs) error {
-	return args.Runner.Config.SetParent(self.Branch, self.Parent)
+	return args.Runner.GitTown.SetParent(self.Branch, self.Parent)
 }

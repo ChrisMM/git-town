@@ -3,18 +3,13 @@ package domain
 import (
 	"fmt"
 
-	"github.com/git-town/git-town/v10/src/messages"
+	"github.com/git-town/git-town/v11/src/messages"
 )
 
 // BranchInfos contains the BranchInfos for all branches in a repo.
 // Tracking branches on the origin remote don't get their own entry,
 // they are listed in the `TrackingBranch` property of the local branch they track.
 type BranchInfos []BranchInfo
-
-func (self BranchInfos) Clone() BranchInfos {
-	// appending to a slice with zero capacity (zero value) allocates only once
-	return append(self[:0:0], self...)
-}
 
 // FindByLocalName provides the branch with the given name if one exists.
 func (self BranchInfos) FindByLocalName(branchName LocalBranchName) *BranchInfo {

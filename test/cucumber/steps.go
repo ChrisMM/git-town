@@ -14,17 +14,17 @@ import (
 	"github.com/cucumber/godog"
 	"github.com/cucumber/messages-go/v10"
 	"github.com/eiannone/keyboard"
-	"github.com/git-town/git-town/v10/src/cli/print"
-	"github.com/git-town/git-town/v10/src/config"
-	"github.com/git-town/git-town/v10/src/domain"
-	"github.com/git-town/git-town/v10/src/gohacks/slice"
-	"github.com/git-town/git-town/v10/test/asserts"
-	"github.com/git-town/git-town/v10/test/datatable"
-	"github.com/git-town/git-town/v10/test/fixture"
-	"github.com/git-town/git-town/v10/test/git"
-	"github.com/git-town/git-town/v10/test/helpers"
-	"github.com/git-town/git-town/v10/test/output"
-	"github.com/git-town/git-town/v10/test/subshell"
+	"github.com/git-town/git-town/v11/src/cli/print"
+	"github.com/git-town/git-town/v11/src/config/configdomain"
+	"github.com/git-town/git-town/v11/src/domain"
+	"github.com/git-town/git-town/v11/src/gohacks/slice"
+	"github.com/git-town/git-town/v11/test/asserts"
+	"github.com/git-town/git-town/v11/test/datatable"
+	"github.com/git-town/git-town/v11/test/fixture"
+	"github.com/git-town/git-town/v11/test/git"
+	"github.com/git-town/git-town/v11/test/helpers"
+	"github.com/git-town/git-town/v11/test/output"
+	"github.com/git-town/git-town/v11/test/subshell"
 )
 
 // beforeSuiteMux ensures that we run BeforeSuite only once globally.
@@ -94,7 +94,7 @@ func Steps(suite *godog.Suite, state *ScenarioState) {
 		state.fixture.DevRepo.CreateChildFeatureBranch(branch, domain.NewLocalBranchName(parentBranch))
 		state.initialLocalBranches = append(state.initialLocalBranches, branch)
 		state.initialRemoteBranches = append(state.initialRemoteBranches, branch)
-		state.initialBranchHierarchy.AddRow(branchText, parentBranch)
+		state.initialLineage.AddRow(branchText, parentBranch)
 		state.fixture.DevRepo.PushBranchToRemote(branch, domain.OriginRemote)
 		return nil
 	})
@@ -111,7 +111,7 @@ func Steps(suite *godog.Suite, state *ScenarioState) {
 		isLocal := localStr != ""
 		asserts.NoError(state.fixture.DevRepo.CreateFeatureBranch(branch))
 		state.initialLocalBranches = append(state.initialLocalBranches, branch)
-		state.initialBranchHierarchy.AddRow(branchText, "main")
+		state.initialLineage.AddRow(branchText, "main")
 		if !isLocal {
 			state.initialRemoteBranches = append(state.initialRemoteBranches, branch)
 			state.fixture.DevRepo.PushBranchToRemote(branch, domain.OriginRemote)
@@ -189,6 +189,20 @@ func Steps(suite *godog.Suite, state *ScenarioState) {
 		return nil
 	})
 
+	suite.Step(`^branch "([^"]+)" is active in another worktree`, func(branch string) error {
+		state.fixture.AddSecondWorktree(domain.NewLocalBranchName(branch))
+		return nil
+	})
+
+	suite.Step(`^display "([^"]+)"$`, func(command string) error {
+		parts := strings.Split(command, " ")
+		output, err := state.fixture.DevRepo.BackendRunner.Query(parts[0], parts[1:]...)
+		fmt.Println("XXXXXXXXXXXXXXXXX " + strings.ToUpper(command) + " START XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX")
+		fmt.Println(output)
+		fmt.Println("XXXXXXXXXXXXXXXXX " + strings.ToUpper(command) + " END XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX")
+		return err
+	})
+
 	suite.Step(`^file "([^"]+)" still contains unresolved conflicts$`, func(name string) error {
 		content := state.fixture.DevRepo.FileContent(name)
 		if !strings.Contains(content, "<<<<<<<") {
@@ -218,74 +232,50 @@ func Steps(suite *godog.Suite, state *ScenarioState) {
 	})
 
 	suite.Step(`^Git Town is not configured$`, func() error {
-		err := state.fixture.DevRepo.Config.RemovePerennialBranchConfiguration()
+		err := state.fixture.DevRepo.RemovePerennialBranchConfiguration()
 		if err != nil {
 			return err
 		}
-		state.fixture.DevRepo.DeleteMainBranchConfiguration()
+		state.fixture.DevRepo.RemoveMainBranchConfiguration()
 		return nil
 	})
 
 	suite.Step(`^Git Town setting "color.ui" is "([^"]*)"$`, func(value string) error {
-		return state.fixture.DevRepo.Config.SetColorUI(value)
+		return state.fixture.DevRepo.SetColorUI(value)
 	})
 
 	suite.Step(`^Git Town parent setting for branch "([^"]*)" is "([^"]*)"$`, func(branch, value string) error {
 		branchName := domain.NewLocalBranchName(branch)
-		configKey := config.NewParentKey(branchName)
-		return state.fixture.DevRepo.Config.SetLocalConfigValue(configKey, value)
-	})
-
-	suite.Step(`^(?:local )?Git Town setting "([^"]*)" is "([^"]*)"$`, func(name, value string) error {
-		configKey := config.ParseKey("git-town." + name)
-		return state.fixture.DevRepo.Config.SetLocalConfigValue(*configKey, value)
-	})
-
-	suite.Step(`^global Git Town setting "([^"]*)" is "([^"]*)"$`, func(name, value string) error {
-		configKey := config.ParseKey("git-town." + name)
-		err := state.fixture.DevRepo.Config.SetGlobalConfigValue(*configKey, value)
-		return err
-	})
-
-	suite.Step(`^local Git Town setting "([^"]*)" no longer exists$`, func(name string) error {
-		configKey := config.ParseKey("git-town." + name)
-		newValue := state.fixture.DevRepo.Config.LocalConfigValue(*configKey)
-		if newValue == "" {
-			return nil
-		}
-		return fmt.Errorf("should not have local %q anymore but has value %q", name, newValue)
-	})
-
-	suite.Step(`^global Git Town setting "([^"]*)" no longer exists$`, func(name string) error {
-		configKey := config.ParseKey("git-town." + name)
-		newValue := state.fixture.DevRepo.Config.GlobalConfigValue(*configKey)
-		if newValue == "" {
-			return nil
-		}
-		return fmt.Errorf("should not have global %q anymore but has value %q", name, newValue)
+		configKey := configdomain.NewParentKey(branchName)
+		return state.fixture.DevRepo.GitTown.SetLocalConfigValue(configKey, value)
 	})
 
 	suite.Step(`^Git Town setting "([^"]*)" is now "([^"]*)"$`, func(name, want string) error {
-		configKey := config.ParseKey("git-town." + name)
-		have := state.fixture.DevRepo.Config.LocalOrGlobalConfigValue(*configKey)
+		configKey := configdomain.ParseKey("git-town." + name)
+		have := state.fixture.DevRepo.GitTown.LocalOrGlobalConfigValue(*configKey)
 		if have != want {
 			return fmt.Errorf("expected setting %q to be %q, but was %q", name, want, have)
 		}
 		return nil
 	})
 
-	suite.Step(`^local Git Town setting "([^"]*)" is now "([^"]*)"$`, func(name, want string) error {
-		configKey := config.ParseKey("git-town." + name)
-		have := state.fixture.DevRepo.Config.LocalConfigValue(*configKey)
-		if have != want {
-			return fmt.Errorf("expected local setting %q to be %q, but was %q", name, want, have)
+	suite.Step(`^global Git Town setting "([^"]*)" is "([^"]*)"$`, func(name, value string) error {
+		configKey := configdomain.ParseKey("git-town." + name)
+		return state.fixture.DevRepo.GitTown.SetGlobalConfigValue(*configKey, value)
+	})
+
+	suite.Step(`^global Git Town setting "([^"]*)" no longer exists$`, func(name string) error {
+		configKey := configdomain.ParseKey("git-town." + name)
+		newValue := state.fixture.DevRepo.GitTown.GlobalConfigValue(*configKey)
+		if newValue == "" {
+			return nil
 		}
-		return nil
+		return fmt.Errorf("should not have global %q anymore but has value %q", name, newValue)
 	})
 
 	suite.Step(`^global Git Town setting "([^"]*)" is (?:now|still) "([^"]*)"$`, func(name, want string) error {
-		configKey := config.ParseKey("git-town." + name)
-		have := state.fixture.DevRepo.Config.GlobalConfigValue(*configKey)
+		configKey := configdomain.ParseKey("git-town." + name)
+		have := state.fixture.DevRepo.GitTown.GlobalConfigValue(*configKey)
 		if have != want {
 			return fmt.Errorf("expected global setting %q to be %q, but was %q", name, want, have)
 		}
@@ -328,14 +318,14 @@ func Steps(suite *godog.Suite, state *ScenarioState) {
 	suite.Step(`^I (?:run|ran) "(.+)"$`, func(command string) error {
 		updateInitialSHAs(state)
 		state.runOutput, state.runExitCode = state.fixture.DevRepo.MustQueryStringCode(command)
-		state.fixture.DevRepo.Config.Reload()
+		state.fixture.DevRepo.GitTown.Reload()
 		return nil
 	})
 
 	suite.Step(`^I (?:run|ran) "([^"]+)" and answer(?:ed)? the prompts:$`, func(cmd string, input *messages.PickleStepArgument_PickleTable) error {
 		updateInitialSHAs(state)
 		state.runOutput, state.runExitCode = state.fixture.DevRepo.MustQueryStringCodeWith(cmd, &subshell.Options{Input: helpers.TableToInput(input)})
-		state.fixture.DevRepo.Config.Reload()
+		state.fixture.DevRepo.GitTown.Reload()
 		return nil
 	})
 
@@ -343,7 +333,7 @@ func Steps(suite *godog.Suite, state *ScenarioState) {
 		updateInitialSHAs(state)
 		env := append(os.Environ(), "GIT_EDITOR=true")
 		state.runOutput, state.runExitCode = state.fixture.DevRepo.MustQueryStringCodeWith(cmd, &subshell.Options{Env: env})
-		state.fixture.DevRepo.Config.Reload()
+		state.fixture.DevRepo.GitTown.Reload()
 		return nil
 	})
 
@@ -351,7 +341,7 @@ func Steps(suite *godog.Suite, state *ScenarioState) {
 		updateInitialSHAs(state)
 		state.fixture.DevRepo.MockCommitMessage("")
 		state.runOutput, state.runExitCode = state.fixture.DevRepo.MustQueryStringCode(cmd)
-		state.fixture.DevRepo.Config.Reload()
+		state.fixture.DevRepo.GitTown.Reload()
 		return nil
 	})
 
@@ -359,7 +349,7 @@ func Steps(suite *godog.Suite, state *ScenarioState) {
 		updateInitialSHAs(state)
 		state.fixture.DevRepo.MockCommitMessage(message)
 		state.runOutput, state.runExitCode = state.fixture.DevRepo.MustQueryStringCode(cmd)
-		state.fixture.DevRepo.Config.Reload()
+		state.fixture.DevRepo.GitTown.Reload()
 		return nil
 	})
 
@@ -367,14 +357,14 @@ func Steps(suite *godog.Suite, state *ScenarioState) {
 		updateInitialSHAs(state)
 		env := append(os.Environ(), "GIT_EDITOR=true")
 		state.runOutput, state.runExitCode = state.fixture.DevRepo.MustQueryStringCodeWith(cmd, &subshell.Options{Env: env, Input: helpers.TableToInput(input)})
-		state.fixture.DevRepo.Config.Reload()
+		state.fixture.DevRepo.GitTown.Reload()
 		return nil
 	})
 
 	suite.Step(`^I run "([^"]+)" in the "([^"]+)" folder$`, func(cmd, folderName string) error {
 		updateInitialSHAs(state)
 		state.runOutput, state.runExitCode = state.fixture.DevRepo.MustQueryStringCodeWith(cmd, &subshell.Options{Dir: folderName})
-		state.fixture.DevRepo.Config.Reload()
+		state.fixture.DevRepo.GitTown.Reload()
 		return nil
 	})
 
@@ -485,13 +475,36 @@ func Steps(suite *godog.Suite, state *ScenarioState) {
 		return nil
 	})
 
-	suite.Step(`^"([^"]*)" launches a new pull request with this url in my browser:$`, func(tool string, url *messages.PickleStepArgument_PickleDocString) error {
+	suite.Step(`^"([^"]*)" launches a new proposal with this url in my browser:$`, func(tool string, url *messages.PickleStepArgument_PickleDocString) error {
 		want := fmt.Sprintf("%s called with: %s", tool, url.Content)
 		want = strings.ReplaceAll(want, "?", `\?`)
 		regex := regexp.MustCompile(want)
 		have := state.runOutput
 		if !regex.MatchString(have) {
 			return fmt.Errorf("EXPECTED: a regex matching %q\nGOT: %q", want, have)
+		}
+		return nil
+	})
+
+	suite.Step(`^local Git Town setting "([^"]*)" no longer exists$`, func(name string) error {
+		configKey := configdomain.ParseKey("git-town." + name)
+		newValue := state.fixture.DevRepo.GitTown.LocalConfigValue(*configKey)
+		if newValue == "" {
+			return nil
+		}
+		return fmt.Errorf("should not have local %q anymore but has value %q", name, newValue)
+	})
+
+	suite.Step(`^(?:local )?Git Town setting "([^"]*)" is "([^"]*)"$`, func(name, value string) error {
+		configKey := configdomain.ParseKey("git-town." + name)
+		return state.fixture.DevRepo.GitTown.SetLocalConfigValue(*configKey, value)
+	})
+
+	suite.Step(`^local Git Town setting "([^"]*)" is now "([^"]*)"$`, func(name, want string) error {
+		configKey := configdomain.ParseKey("git-town." + name)
+		have := state.fixture.DevRepo.GitTown.LocalConfigValue(*configKey)
+		if have != want {
+			return fmt.Errorf("expected local setting %q to be %q, but was %q", name, want, have)
 		}
 		return nil
 	})
@@ -509,10 +522,10 @@ func Steps(suite *godog.Suite, state *ScenarioState) {
 		return nil
 	})
 
-	suite.Step(`^no branch hierarchy exists now$`, func() error {
-		if state.fixture.DevRepo.Config.HasBranchInformation() {
-			branchInfo := state.fixture.DevRepo.Config.Lineage(state.fixture.DevRepo.Config.RemoveLocalConfigValue)
-			return fmt.Errorf("unexpected Git Town branch hierarchy information: %+v", branchInfo)
+	suite.Step(`^no lineage exists now$`, func() error {
+		if state.fixture.DevRepo.GitTown.ContainsLineage() {
+			branchInfo := state.fixture.DevRepo.GitTown.Lineage(state.fixture.DevRepo.GitTown.RemoveLocalConfigValue)
+			return fmt.Errorf("unexpected Git Town lineage information: %+v", branchInfo)
 		}
 		return nil
 	})
@@ -548,16 +561,8 @@ func Steps(suite *godog.Suite, state *ScenarioState) {
 		return nil
 	})
 
-	suite.Step(`^now the initial commits exist$`, func() error {
-		return state.compareTable(state.initialCommits)
-	})
-
-	suite.Step(`^now these commits exist$`, func(table *messages.PickleStepArgument_PickleTable) error {
-		return state.compareTable(table)
-	})
-
 	suite.Step(`^offline mode is disabled$`, func() error {
-		isOffline, err := state.fixture.DevRepo.Config.IsOffline()
+		isOffline, err := state.fixture.DevRepo.GitTown.IsOffline()
 		if err != nil {
 			return err
 		}
@@ -568,7 +573,7 @@ func Steps(suite *godog.Suite, state *ScenarioState) {
 	})
 
 	suite.Step(`^offline mode is enabled$`, func() error {
-		return state.fixture.DevRepo.Config.SetOffline(true)
+		return state.fixture.DevRepo.GitTown.SetOffline(true)
 	})
 
 	suite.Step(`^origin deletes the "([^"]*)" branch$`, func(branch string) error {
@@ -642,16 +647,16 @@ func Steps(suite *godog.Suite, state *ScenarioState) {
 	})
 
 	suite.Step(`^the coworker sets the parent branch of "([^"]*)" as "([^"]*)"$`, func(childBranch, parentBranch string) error {
-		_ = state.fixture.CoworkerRepo.Config.SetParent(domain.NewLocalBranchName(childBranch), domain.NewLocalBranchName(parentBranch))
+		_ = state.fixture.CoworkerRepo.GitTown.SetParent(domain.NewLocalBranchName(childBranch), domain.NewLocalBranchName(parentBranch))
 		return nil
 	})
 
-	suite.Step(`^the coworker sets the "sync-strategy" to "(merge|rebase)"$`, func(value string) error {
-		syncStrategy, err := config.ToSyncStrategy(value)
+	suite.Step(`^the coworker sets the "sync-feature-strategy" to "(merge|rebase)"$`, func(value string) error {
+		syncFeatureStrategy, err := configdomain.NewSyncFeatureStrategy(value)
 		if err != nil {
 			return err
 		}
-		_ = state.fixture.CoworkerRepo.Config.SetSyncStrategy(syncStrategy)
+		_ = state.fixture.CoworkerRepo.GitTown.SetSyncFeatureStrategy(syncFeatureStrategy)
 		return nil
 	})
 
@@ -683,7 +688,7 @@ func Steps(suite *godog.Suite, state *ScenarioState) {
 		}
 		state.initialLocalBranches = append(state.initialLocalBranches, branch)
 		if branchType == "feature" {
-			state.initialBranchHierarchy.AddRow(branchName, "main")
+			state.initialLineage.AddRow(branchName, "main")
 		}
 		if !isLocal {
 			state.initialRemoteBranches = append(state.initialRemoteBranches, branch)
@@ -718,21 +723,21 @@ func Steps(suite *godog.Suite, state *ScenarioState) {
 		return nil
 	})
 
-	suite.Step(`^the initial branch hierarchy exists$`, func() error {
-		have := state.fixture.DevRepo.BranchHierarchyTable()
-		state.initialBranchHierarchy.Sort()
-		diff, errCnt := have.EqualDataTable(state.initialBranchHierarchy)
+	suite.Step(`^the initial lineage exists$`, func() error {
+		have := state.fixture.DevRepo.LineageTable()
+		state.initialLineage.Sort()
+		diff, errCnt := have.EqualDataTable(state.initialLineage)
 		if errCnt > 0 {
-			fmt.Printf("\nERROR! Found %d differences in the branch hierarchy\n\n", errCnt)
-			fmt.Printf("INITIAL BRANCH HIERARCHY:\n%s\n", state.initialBranchHierarchy.String())
-			fmt.Printf("CURRENT BRANCH HIERARCHY:\n%s\n", have.String())
+			fmt.Printf("\nERROR! Found %d differences in the lineage\n\n", errCnt)
+			fmt.Printf("INITIAL LINEAGE:\n%s\n", state.initialLineage.String())
+			fmt.Printf("CURRENT LINEAGE:\n%s\n", have.String())
 			fmt.Println(diff)
 			return fmt.Errorf("mismatching branches found, see the diff above")
 		}
 		return nil
 	})
 
-	suite.Step(`^the initial branches and hierarchy exist$`, func() error {
+	suite.Step(`^the initial branches and lineage exist$`, func() error {
 		// verify initial branches
 		have := state.fixture.Branches()
 		want := state.InitialBranches()
@@ -742,14 +747,14 @@ func Steps(suite *godog.Suite, state *ScenarioState) {
 			fmt.Println(diff)
 			return fmt.Errorf("mismatching branches found, see diff above")
 		}
-		// verify initial branch hierarchy
-		state.initialBranchHierarchy.Sort()
-		have = state.fixture.DevRepo.BranchHierarchyTable()
-		diff, errCnt := have.EqualDataTable(state.initialBranchHierarchy)
+		// verify initial lineage
+		state.initialLineage.Sort()
+		have = state.fixture.DevRepo.LineageTable()
+		diff, errCnt := have.EqualDataTable(state.initialLineage)
 		if errCnt > 0 {
-			fmt.Printf("\nERROR! Found %d differences in the branch hierarchy\n\n", errCnt)
+			fmt.Printf("\nERROR! Found %d differences in the lineage\n\n", errCnt)
 			fmt.Println(diff)
-			return fmt.Errorf("mismatching branch hierarchy found, see the diff above")
+			return fmt.Errorf("mismatching lineage found, see the diff above")
 		}
 		return nil
 	})
@@ -768,6 +773,10 @@ func Steps(suite *godog.Suite, state *ScenarioState) {
 		return nil
 	})
 
+	suite.Step(`^the initial commits exist$`, func() error {
+		return state.compareTable(state.initialCommits)
+	})
+
 	suite.Step(`^the (local )?feature branches "([^"]+)" and "([^"]+)"$`, func(localStr, branch1, branch2 string) error {
 		isLocal := localStr != ""
 		for _, branchText := range []string{branch1, branch2} {
@@ -777,7 +786,7 @@ func Steps(suite *godog.Suite, state *ScenarioState) {
 				return err
 			}
 			state.initialLocalBranches = append(state.initialLocalBranches, branch)
-			state.initialBranchHierarchy.AddRow(branchText, "main")
+			state.initialLineage.AddRow(branchText, "main")
 			if !isLocal {
 				state.fixture.DevRepo.PushBranchToRemote(branch, domain.OriginRemote)
 				state.initialRemoteBranches = append(state.initialRemoteBranches, branch)
@@ -795,7 +804,7 @@ func Steps(suite *godog.Suite, state *ScenarioState) {
 				return err
 			}
 			state.initialLocalBranches = append(state.initialLocalBranches, branch)
-			state.initialBranchHierarchy.AddRow(branchText, "main")
+			state.initialLineage.AddRow(branchText, "main")
 			if !isLocal {
 				state.fixture.DevRepo.PushBranchToRemote(branch, domain.OriginRemote)
 				state.initialRemoteBranches = append(state.initialRemoteBranches, branch)
@@ -833,11 +842,11 @@ func Steps(suite *godog.Suite, state *ScenarioState) {
 	})
 
 	suite.Step(`^the main branch is "([^"]+)"$`, func(name string) error {
-		return state.fixture.DevRepo.Config.SetMainBranch(domain.NewLocalBranchName(name))
+		return state.fixture.DevRepo.GitTown.SetMainBranch(domain.NewLocalBranchName(name))
 	})
 
 	suite.Step(`^the main branch is now "([^"]+)"$`, func(want string) error {
-		have := state.fixture.DevRepo.Config.MainBranch()
+		have := state.fixture.DevRepo.GitTown.MainBranch()
 		if have.String() != want {
 			return fmt.Errorf("expected %q, got %q", want, have)
 		}
@@ -850,19 +859,19 @@ func Steps(suite *godog.Suite, state *ScenarioState) {
 	})
 
 	suite.Step(`^the perennial branches are "([^"]+)"$`, func(name string) error {
-		return state.fixture.DevRepo.Config.AddToPerennialBranches(domain.NewLocalBranchName(name))
+		return state.fixture.DevRepo.GitTown.AddToPerennialBranches(domain.NewLocalBranchName(name))
 	})
 
 	suite.Step(`^the perennial branches are "([^"]+)" and "([^"]+)"$`, func(branch1, branch2 string) error {
-		return state.fixture.DevRepo.Config.AddToPerennialBranches(domain.NewLocalBranchName(branch1), domain.NewLocalBranchName(branch2))
+		return state.fixture.DevRepo.GitTown.AddToPerennialBranches(domain.NewLocalBranchName(branch1), domain.NewLocalBranchName(branch2))
 	})
 
 	suite.Step(`^the perennial branches are not configured$`, func() error {
-		return state.fixture.DevRepo.Config.RemovePerennialBranchConfiguration()
+		return state.fixture.DevRepo.RemovePerennialBranchConfiguration()
 	})
 
 	suite.Step(`^the perennial branches are now "([^"]+)"$`, func(name string) error {
-		actual := state.fixture.DevRepo.Config.PerennialBranches()
+		actual := state.fixture.DevRepo.GitTown.PerennialBranches()
 		if len(actual) != 1 {
 			return fmt.Errorf("expected 1 perennial branch, got %q", actual)
 		}
@@ -873,7 +882,7 @@ func Steps(suite *godog.Suite, state *ScenarioState) {
 	})
 
 	suite.Step(`^the perennial branches are now "([^"]+)" and "([^"]+)"$`, func(branch1, branch2 string) error {
-		actual := state.fixture.DevRepo.Config.PerennialBranches()
+		actual := state.fixture.DevRepo.GitTown.PerennialBranches()
 		if len(actual) != 2 {
 			return fmt.Errorf("expected 2 perennial branches, got %q", actual)
 		}
@@ -884,16 +893,44 @@ func Steps(suite *godog.Suite, state *ScenarioState) {
 	})
 
 	suite.Step(`^the previous Git branch is (?:now|still) "([^"]*)"$`, func(want string) error {
-		previousBranch := domain.NewLocalBranchName("-")
-		state.fixture.DevRepo.CheckoutBranch(previousBranch)
-		have, err := state.fixture.DevRepo.CurrentBranch()
-		if err != nil {
-			return err
-		}
+		have := state.fixture.DevRepo.BackendCommands.PreviouslyCheckedOutBranch()
 		if have.String() != want {
 			return fmt.Errorf("expected previous branch %q but got %q", want, have)
 		}
-		state.fixture.DevRepo.CheckoutBranch(previousBranch)
+		return nil
+	})
+
+	suite.Step(`^there are still no perennial branches$`, func() error {
+		branches := state.fixture.DevRepo.GitTown.PerennialBranches()
+		if len(branches) > 0 {
+			return fmt.Errorf("expected no perennial branches, got %q", branches)
+		}
+		return nil
+	})
+
+	suite.Step(`^these committed files exist now$`, func(table *messages.PickleStepArgument_PickleTable) error {
+		fileTable := state.fixture.DevRepo.FilesInBranches(domain.NewLocalBranchName("main"))
+		diff, errorCount := fileTable.EqualGherkin(table)
+		if errorCount != 0 {
+			fmt.Printf("\nERROR! Found %d differences in the existing files\n\n", errorCount)
+			fmt.Println(diff)
+			return fmt.Errorf("mismatching files found, see diff above")
+		}
+		return nil
+	})
+
+	suite.Step(`^these commits exist now$`, func(table *messages.PickleStepArgument_PickleTable) error {
+		return state.compareTable(table)
+	})
+
+	suite.Step(`^these tags exist$`, func(table *messages.PickleStepArgument_PickleTable) error {
+		tagTable := state.fixture.TagTable()
+		diff, errorCount := tagTable.EqualGherkin(table)
+		if errorCount != 0 {
+			fmt.Printf("\nERROR! Found %d differences in the existing tags\n\n", errorCount)
+			fmt.Println(diff)
+			return fmt.Errorf("mismatching tags found, see diff above")
+		}
 		return nil
 	})
 
@@ -930,41 +967,11 @@ func Steps(suite *godog.Suite, state *ScenarioState) {
 		return nil
 	})
 
-	suite.Step(`^there are still no perennial branches$`, func() error {
-		branches := state.fixture.DevRepo.Config.PerennialBranches()
-		if len(branches) > 0 {
-			return fmt.Errorf("expected no perennial branches, got %q", branches)
-		}
-		return nil
-	})
-
-	suite.Step(`^these committed files exist now$`, func(table *messages.PickleStepArgument_PickleTable) error {
-		fileTable := state.fixture.DevRepo.FilesInBranches(domain.NewLocalBranchName("main"))
-		diff, errorCount := fileTable.EqualGherkin(table)
-		if errorCount != 0 {
-			fmt.Printf("\nERROR! Found %d differences in the existing files\n\n", errorCount)
-			fmt.Println(diff)
-			return fmt.Errorf("mismatching files found, see diff above")
-		}
-		return nil
-	})
-
-	suite.Step(`^these tags exist$`, func(table *messages.PickleStepArgument_PickleTable) error {
-		tagTable := state.fixture.TagTable()
-		diff, errorCount := tagTable.EqualGherkin(table)
-		if errorCount != 0 {
-			fmt.Printf("\nERROR! Found %d differences in the existing tags\n\n", errorCount)
-			fmt.Println(diff)
-			return fmt.Errorf("mismatching tags found, see diff above")
-		}
-		return nil
-	})
-
 	suite.Step(`^this branch lineage exists now$`, func(input *messages.PickleStepArgument_PickleTable) error {
-		table := state.fixture.DevRepo.BranchHierarchyTable()
+		table := state.fixture.DevRepo.LineageTable()
 		diff, errCount := table.EqualGherkin(input)
 		if errCount > 0 {
-			fmt.Printf("\nERROR! Found %d differences in the branch hierarchy\n\n", errCount)
+			fmt.Printf("\nERROR! Found %d differences in the lineage\n\n", errCount)
 			fmt.Println(diff)
 			return fmt.Errorf("mismatching branches found, see the diff above")
 		}

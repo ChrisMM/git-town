@@ -1,15 +1,15 @@
 package runstate
 
 import (
-	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
-	"github.com/git-town/git-town/v10/src/domain"
-	"github.com/git-town/git-town/v10/src/git"
-	"github.com/git-town/git-town/v10/src/vm/opcode"
-	"github.com/git-town/git-town/v10/src/vm/program"
-	"github.com/git-town/git-town/v10/src/vm/shared"
+	"github.com/git-town/git-town/v11/src/domain"
+	"github.com/git-town/git-town/v11/src/git"
+	"github.com/git-town/git-town/v11/src/vm/opcode"
+	"github.com/git-town/git-town/v11/src/vm/program"
+	"github.com/git-town/git-town/v11/src/vm/shared"
 )
 
 // RunState represents the current state of a Git Town command,
@@ -17,7 +17,6 @@ import (
 // and how to undo what has been done so far.
 type RunState struct {
 	Command                  string
-	IsAbort                  bool            `exhaustruct:"optional"`
 	IsUndo                   bool            `exhaustruct:"optional"`
 	AbortProgram             program.Program `exhaustruct:"optional"`
 	RunProgram               program.Program
@@ -61,7 +60,7 @@ func (self *RunState) CreateAbortRunState() RunState {
 	abortProgram.AddProgram(self.UndoProgram)
 	return RunState{
 		Command:             self.Command,
-		IsAbort:             true,
+		IsUndo:              true,
 		InitialActiveBranch: self.InitialActiveBranch,
 		RunProgram:          abortProgram,
 	}
@@ -169,10 +168,8 @@ func (self *RunState) String() string {
 	result.WriteString("RunState:\n")
 	result.WriteString("  Command: ")
 	result.WriteString(self.Command)
-	result.WriteString("\n  IsAbort: ")
-	result.WriteString(fmt.Sprintf("%t", self.IsAbort))
 	result.WriteString("\n  IsUndo: ")
-	result.WriteString(fmt.Sprintf("%t", self.IsUndo))
+	result.WriteString(strconv.FormatBool(self.IsUndo))
 	result.WriteString("\n  AbortProgram: ")
 	result.WriteString(self.AbortProgram.StringIndented("    "))
 	result.WriteString("  RunProgram: ")

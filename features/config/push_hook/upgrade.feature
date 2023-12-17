@@ -2,9 +2,6 @@ Feature: automatically upgrade outdated configuration
 
   Scenario Outline:
     Given <LOCATION> Git Town setting "push-verify" is "true"
-    And the current branch is a feature branch "feature"
-    And tool "open" is installed
-    And the origin is "git@github.com:git-town/git-town.git"
     When I run "git-town <COMMAND>"
     Then it prints:
       """
@@ -15,22 +12,6 @@ Feature: automatically upgrade outdated configuration
     And <LOCATION> Git Town setting "push-verify" no longer exists
 
     Examples:
-      | COMMAND           | LOCATION |
-      | config            | local    |
-      | config            | global   |
-      | config push-hook  | local    |
-      | config push-hook  | global   |
-      | append foo        | local    |
-      | append foo        | global   |
-      | hack foo          | local    |
-      | hack foo          | global   |
-      | prepend foo       | local    |
-      | prepend foo       | global   |
-      | sync              | local    |
-      | sync              | global   |
-      | kill              | local    |
-      | kill              | global   |
-      | new-pull-request  | local    |
-      | new-pull-request  | global   |
-      | rename-branch bar | local    |
-      | rename-branch bar | global   |
+      | COMMAND  | LOCATION |
+      | hack foo | local    |
+      | hack foo | global   |

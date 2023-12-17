@@ -3,10 +3,10 @@ package opcode
 import (
 	"fmt"
 
-	"github.com/git-town/git-town/v10/src/cli/dialog"
-	"github.com/git-town/git-town/v10/src/domain"
-	"github.com/git-town/git-town/v10/src/messages"
-	"github.com/git-town/git-town/v10/src/vm/shared"
+	"github.com/git-town/git-town/v11/src/cli/dialog"
+	"github.com/git-town/git-town/v11/src/domain"
+	"github.com/git-town/git-town/v11/src/messages"
+	"github.com/git-town/git-town/v11/src/vm/shared"
 )
 
 // SquashMerge squash merges the branch with the given name into the current branch.
@@ -23,7 +23,7 @@ func (self *SquashMerge) CreateAbortProgram() []shared.Opcode {
 	}
 }
 
-func (self *SquashMerge) CreateAutomaticAbortError() error {
+func (self *SquashMerge) CreateAutomaticUndoError() error {
 	return fmt.Errorf(messages.ShipAbortedMergeError)
 }
 
@@ -62,6 +62,6 @@ func (self *SquashMerge) Run(args shared.RunArgs) error {
 	return nil
 }
 
-func (self *SquashMerge) ShouldAutomaticallyAbortOnError() bool {
+func (self *SquashMerge) ShouldAutomaticallyUndoOnError() bool {
 	return true
 }

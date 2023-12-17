@@ -3,9 +3,9 @@ package opcode
 import (
 	"fmt"
 
-	"github.com/git-town/git-town/v10/src/domain"
-	"github.com/git-town/git-town/v10/src/messages"
-	"github.com/git-town/git-town/v10/src/vm/shared"
+	"github.com/git-town/git-town/v11/src/domain"
+	"github.com/git-town/git-town/v11/src/messages"
+	"github.com/git-town/git-town/v11/src/vm/shared"
 )
 
 // ConnectorMergeProposal squash merges the branch with the given name into the current branch.
@@ -16,7 +16,6 @@ type ConnectorMergeProposal struct {
 	enteredEmptyCommitMessage bool
 	mergeError                error
 	ProposalNumber            int
-	undeclaredOpcodeMethods
 }
 
 func (self *ConnectorMergeProposal) CreateAbortProgram() []shared.Opcode {
@@ -26,11 +25,17 @@ func (self *ConnectorMergeProposal) CreateAbortProgram() []shared.Opcode {
 	return []shared.Opcode{}
 }
 
-func (self *ConnectorMergeProposal) CreateAutomaticAbortError() error {
+func (self *ConnectorMergeProposal) CreateAutomaticUndoError() error {
 	if self.enteredEmptyCommitMessage {
 		return fmt.Errorf(messages.ShipAbortedMergeError)
 	}
 	return self.mergeError
+}
+
+func (self *ConnectorMergeProposal) CreateContinueProgram() []shared.Opcode {
+	return []shared.Opcode{
+		self,
+	}
 }
 
 func (self *ConnectorMergeProposal) Run(args shared.RunArgs) error {
@@ -66,8 +71,8 @@ func (self *ConnectorMergeProposal) Run(args shared.RunArgs) error {
 	return self.mergeError
 }
 
-// ShouldAutomaticallyAbortOnError returns whether this opcode should cause the command to
-// automatically abort if it errors.
-func (self *ConnectorMergeProposal) ShouldAutomaticallyAbortOnError() bool {
+// ShouldAutomaticallyUndoOnError returns whether this opcode should cause the command to
+// automatically undo if it errors.
+func (self *ConnectorMergeProposal) ShouldAutomaticallyUndoOnError() bool {
 	return true
 }

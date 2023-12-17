@@ -1,9 +1,9 @@
 package execute
 
 import (
-	"github.com/git-town/git-town/v10/src/config"
-	"github.com/git-town/git-town/v10/src/domain"
-	"github.com/git-town/git-town/v10/src/validate"
+	"github.com/git-town/git-town/v11/src/config/configdomain"
+	"github.com/git-town/git-town/v11/src/domain"
+	"github.com/git-town/git-town/v11/src/validate"
 )
 
 // LoadBranches loads the typically used information about Git branches using a single Git command.
@@ -28,7 +28,7 @@ func LoadBranches(args LoadBranchesArgs) (domain.Branches, domain.BranchesSnapsh
 			Lineage:                 args.Lineage,
 			PushHook:                args.PushHook,
 			RootDir:                 args.Repo.RootDir,
-			Run:                     &args.Repo.Runner,
+			Run:                     args.Repo.Runner,
 		})
 		if err != nil || exit {
 			return domain.EmptyBranches(), branchesSnapshot, stashSnapshot, exit, err
@@ -50,7 +50,7 @@ func LoadBranches(args LoadBranchesArgs) (domain.Branches, domain.BranchesSnapsh
 		if err != nil {
 			return domain.EmptyBranches(), branchesSnapshot, stashSnapshot, false, err
 		}
-		if remotes.HasOrigin() && !args.Repo.IsOffline {
+		if remotes.HasOrigin() && !args.Repo.IsOffline.Bool() {
 			err = args.Repo.Runner.Frontend.Fetch()
 			if err != nil {
 				return domain.EmptyBranches(), branchesSnapshot, stashSnapshot, false, err
@@ -67,9 +67,9 @@ func LoadBranches(args LoadBranchesArgs) (domain.Branches, domain.BranchesSnapsh
 			return domain.EmptyBranches(), branchesSnapshot, stashSnapshot, false, err
 		}
 	}
-	branchTypes := args.Repo.Runner.Config.BranchTypes()
+	branchTypes := args.Repo.Runner.GitTown.BranchTypes()
 	branches := domain.Branches{
-		All:     branchesSnapshot.Branches.Clone(),
+		All:     branchesSnapshot.Branches,
 		Types:   branchTypes,
 		Initial: branchesSnapshot.Active,
 	}
@@ -84,8 +84,8 @@ type LoadBranchesArgs struct {
 	Fetch                 bool
 	Verbose               bool
 	HandleUnfinishedState bool
-	Lineage               config.Lineage
-	PushHook              bool
+	Lineage               configdomain.Lineage
+	PushHook              configdomain.PushHook
 	ValidateIsConfigured  bool
 	ValidateNoOpenChanges bool
 }

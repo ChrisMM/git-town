@@ -1,8 +1,8 @@
 package opcode
 
 import (
-	"github.com/git-town/git-town/v10/src/domain"
-	"github.com/git-town/git-town/v10/src/vm/shared"
+	"github.com/git-town/git-town/v11/src/domain"
+	"github.com/git-town/git-town/v11/src/vm/shared"
 )
 
 // DeleteParentBranch removes the parent branch entry in the Git Town configuration.
@@ -12,6 +12,6 @@ type DeleteParentBranch struct {
 }
 
 func (self *DeleteParentBranch) Run(args shared.RunArgs) error {
-	args.Runner.Config.RemoveParent(self.Branch)
+	args.Runner.GitTown.RemoveParent(self.Branch)
 	return nil
 }

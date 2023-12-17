@@ -1,8 +1,8 @@
 package opcode
 
 import (
-	"github.com/git-town/git-town/v10/src/domain"
-	"github.com/git-town/git-town/v10/src/vm/shared"
+	"github.com/git-town/git-town/v11/src/domain"
+	"github.com/git-town/git-town/v11/src/vm/shared"
 )
 
 // SetParentIfBranchExists sets the given parent branch as the parent of the given branch,
@@ -17,5 +17,5 @@ func (self *SetParentIfBranchExists) Run(args shared.RunArgs) error {
 	if !args.Runner.Backend.BranchExists(self.Branch) {
 		return nil
 	}
-	return args.Runner.Config.SetParent(self.Branch, self.Parent)
+	return args.Runner.GitTown.SetParent(self.Branch, self.Parent)
 }

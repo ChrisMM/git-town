@@ -3,13 +3,14 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/git-town/git-town/v10/src/cli/flags"
-	"github.com/git-town/git-town/v10/src/cli/format"
-	"github.com/git-town/git-town/v10/src/cli/io"
-	"github.com/git-town/git-town/v10/src/config"
-	"github.com/git-town/git-town/v10/src/execute"
-	"github.com/git-town/git-town/v10/src/git"
-	"github.com/git-town/git-town/v10/src/messages"
+	"github.com/git-town/git-town/v11/src/cli/flags"
+	"github.com/git-town/git-town/v11/src/cli/format"
+	"github.com/git-town/git-town/v11/src/cli/io"
+	"github.com/git-town/git-town/v11/src/config/configdomain"
+	"github.com/git-town/git-town/v11/src/execute"
+	"github.com/git-town/git-town/v11/src/git"
+	"github.com/git-town/git-town/v11/src/gohacks"
+	"github.com/git-town/git-town/v11/src/messages"
 	"github.com/spf13/cobra"
 )
 
@@ -46,24 +47,24 @@ func executeOffline(args []string, verbose bool) error {
 		return err
 	}
 	if len(args) > 0 {
-		return setOfflineStatus(args[0], &repo.Runner)
+		return setOfflineStatus(args[0], repo.Runner)
 	}
-	return displayOfflineStatus(&repo.Runner)
+	return displayOfflineStatus(repo.Runner)
 }
 
 func displayOfflineStatus(run *git.ProdRunner) error {
-	isOffline, err := run.Config.IsOffline()
+	isOffline, err := run.GitTown.IsOffline()
 	if err != nil {
 		return err
 	}
-	io.Println(format.Bool(isOffline))
+	io.Println(format.Bool(isOffline.Bool()))
 	return nil
 }
 
 func setOfflineStatus(text string, run *git.ProdRunner) error {
-	value, err := config.ParseBool(text)
+	value, err := gohacks.ParseBool(text)
 	if err != nil {
-		return fmt.Errorf(messages.ValueInvalid, config.KeyOffline, text)
+		return fmt.Errorf(messages.ValueInvalid, configdomain.KeyOffline, text)
 	}
-	return run.Config.SetOffline(value)
+	return run.GitTown.SetOffline(configdomain.Offline(value))
 }

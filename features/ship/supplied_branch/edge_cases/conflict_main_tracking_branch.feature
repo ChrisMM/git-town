@@ -7,6 +7,7 @@ Feature: handle conflicts between the main branch and its tracking branch
       | main    | local    | conflicting local commit  | conflicting_file | local content   |
       |         | origin   | conflicting origin commit | conflicting_file | origin content  |
       | feature | local    | feature commit            | feature_file     | feature content |
+    And Git Town setting "sync-before-ship" is "true"
     And the current branch is "other"
     And an uncommitted file
     And I run "git-town ship feature -m 'feature done'"
@@ -25,14 +26,14 @@ Feature: handle conflicts between the main branch and its tracking branch
       """
     And it prints the error:
       """
-      To abort, run "git-town abort".
       To continue after having resolved conflicts, run "git-town continue".
+      To go back to where you started, run "git-town undo".
       """
     And a rebase is now in progress
     And the uncommitted file is stashed
 
-  Scenario: abort
-    When I run "git-town abort"
+  Scenario: undo
+    When I run "git-town undo"
     Then it runs the commands
       | BRANCH | COMMAND            |
       | main   | git rebase --abort |
@@ -41,8 +42,8 @@ Feature: handle conflicts between the main branch and its tracking branch
     And the current branch is still "other"
     And the uncommitted file still exists
     And no rebase is in progress
-    And now the initial commits exist
-    And the initial branch hierarchy exists
+    And the initial commits exist
+    And the initial lineage exists
 
   Scenario: resolve and continue
     When I resolve the conflict in "conflicting_file"
@@ -64,7 +65,7 @@ Feature: handle conflicts between the main branch and its tracking branch
       | other   | git stash pop                      |
     And the current branch is now "other"
     And the uncommitted file still exists
-    And now these commits exist
+    And these commits exist now
       | BRANCH | LOCATION      | MESSAGE                   | FILE NAME        | FILE CONTENT     |
       | main   | local, origin | conflicting origin commit | conflicting_file | origin content   |
       |        |               | conflicting local commit  | conflicting_file | resolved content |
@@ -107,16 +108,16 @@ Feature: handle conflicts between the main branch and its tracking branch
       |        | git checkout main                                             |
       | main   | git revert {{ sha 'feature done' }}                           |
       |        | git push                                                      |
-      |        | git push origin {{ sha 'Initial commit' }}:refs/heads/feature |
+      |        | git push origin {{ sha 'initial commit' }}:refs/heads/feature |
       |        | git branch feature {{ sha 'feature commit' }}                 |
       |        | git checkout other                                            |
       | other  | git stash pop                                                 |
     And the current branch is now "other"
-    And now these commits exist
+    And these commits exist now
       | BRANCH  | LOCATION      | MESSAGE                   |
       | main    | local, origin | conflicting origin commit |
       |         |               | conflicting local commit  |
       |         |               | feature done              |
       |         |               | Revert "feature done"     |
       | feature | local         | feature commit            |
-    And the initial branches and hierarchy exist
+    And the initial branches and lineage exist

@@ -46,11 +46,11 @@ Feature: append a branch to a branch whose tracking branch was deleted
       | new     | git add -A                                    |
       |         | git stash                                     |
       |         | git checkout main                             |
-      | main    | git reset --hard {{ sha 'Initial commit' }}   |
+      | main    | git reset --hard {{ sha 'initial commit' }}   |
       |         | git branch shipped {{ sha 'shipped commit' }} |
       |         | git checkout shipped                          |
       | shipped | git branch -D new                             |
       |         | git stash pop                                 |
     And the current branch is now "shipped"
     And the uncommitted file still exists
-    And the initial branches and hierarchy exist
+    And the initial branches and lineage exist

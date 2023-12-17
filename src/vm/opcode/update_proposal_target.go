@@ -3,9 +3,9 @@ package opcode
 import (
 	"fmt"
 
-	"github.com/git-town/git-town/v10/src/domain"
-	"github.com/git-town/git-town/v10/src/messages"
-	"github.com/git-town/git-town/v10/src/vm/shared"
+	"github.com/git-town/git-town/v11/src/domain"
+	"github.com/git-town/git-town/v11/src/messages"
+	"github.com/git-town/git-town/v11/src/vm/shared"
 )
 
 // UpdateProposalTarget updates the target of the proposal with the given number at the code hosting service.
@@ -15,7 +15,7 @@ type UpdateProposalTarget struct {
 	undeclaredOpcodeMethods
 }
 
-func (self *UpdateProposalTarget) CreateAutomaticAbortError() error {
+func (self *UpdateProposalTarget) CreateAutomaticUndoError() error {
 	return fmt.Errorf(messages.ProposalTargetBranchUpdateProblem, self.ProposalNumber)
 }
 
@@ -23,6 +23,6 @@ func (self *UpdateProposalTarget) Run(args shared.RunArgs) error {
 	return args.Connector.UpdateProposalTarget(self.ProposalNumber, self.NewTarget)
 }
 
-func (self *UpdateProposalTarget) ShouldAutomaticallyAbortOnError() bool {
+func (self *UpdateProposalTarget) ShouldAutomaticallyUndoOnError() bool {
 	return true
 }

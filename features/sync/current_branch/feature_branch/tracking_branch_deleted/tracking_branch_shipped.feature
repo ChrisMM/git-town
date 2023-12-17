@@ -43,10 +43,10 @@ Feature: sync a branch whose tracking branch was shipped
       | BRANCH    | COMMAND                                           |
       | main      | git add -A                                        |
       |           | git stash                                         |
-      |           | git reset --hard {{ sha 'Initial commit' }}       |
+      |           | git reset --hard {{ sha 'initial commit' }}       |
       |           | git branch feature-1 {{ sha 'feature-1 commit' }} |
       |           | git checkout feature-1                            |
       | feature-1 | git stash pop                                     |
     And the current branch is now "feature-1"
     And the uncommitted file still exists
-    And the initial branches and hierarchy exist
+    And the initial branches and lineage exist

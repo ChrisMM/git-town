@@ -2,15 +2,14 @@
 package cmd
 
 import (
-	"github.com/git-town/git-town/v10/src/domain"
-	"github.com/git-town/git-town/v10/src/vm/opcode"
-	"github.com/git-town/git-town/v10/src/vm/program"
+	"github.com/git-town/git-town/v11/src/domain"
+	"github.com/git-town/git-town/v11/src/vm/opcode"
+	"github.com/git-town/git-town/v11/src/vm/program"
 )
 
 // Execute runs the Cobra stack.
 func Execute() error {
 	rootCmd := rootCmd()
-	rootCmd.AddCommand(abortCmd())
 	rootCmd.AddCommand(aliasesCommand())
 	rootCmd.AddCommand(appendCmd())
 	rootCmd.AddCommand(completionsCmd(&rootCmd))
@@ -20,6 +19,7 @@ func Execute() error {
 	rootCmd.AddCommand(hackCmd())
 	rootCmd.AddCommand(killCommand())
 	rootCmd.AddCommand(newPullRequestCommand())
+	rootCmd.AddCommand(proposeCommand())
 	rootCmd.AddCommand(prependCommand())
 	rootCmd.AddCommand(renameBranchCommand())
 	rootCmd.AddCommand(repoCommand())
@@ -43,13 +43,9 @@ func long(summary string, desc ...string) string {
 // wrap wraps the given list with opcodes that change the Git root directory or stash away open changes.
 // TODO: only wrap if the list actually contains any opcodes.
 func wrap(program *program.Program, options wrapOptions) {
-	if !options.PreviousBranch.IsEmpty() {
-		program.Add(&opcode.PreserveCheckoutHistory{
-			InitialBranch:                     options.InitialBranch,
-			InitialPreviouslyCheckedOutBranch: options.PreviousBranch,
-			MainBranch:                        options.MainBranch,
-		})
-	}
+	program.Add(&opcode.PreserveCheckoutHistory{
+		PreviousBranchCandidates: options.PreviousBranchCandidates,
+	})
 	if options.StashOpenChanges {
 		program.Prepend(&opcode.StashOpenChanges{})
 		program.Add(&opcode.RestoreOpenChanges{})
@@ -58,9 +54,7 @@ func wrap(program *program.Program, options wrapOptions) {
 
 // wrapOptions represents the options given to Wrap.
 type wrapOptions struct {
-	RunInGitRoot     bool
-	StashOpenChanges bool
-	MainBranch       domain.LocalBranchName
-	InitialBranch    domain.LocalBranchName
-	PreviousBranch   domain.LocalBranchName
+	RunInGitRoot             bool
+	StashOpenChanges         bool
+	PreviousBranchCandidates domain.LocalBranchNames
 }

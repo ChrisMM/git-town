@@ -4,8 +4,8 @@ import (
 	"fmt"
 
 	"github.com/fatih/color"
-	"github.com/git-town/git-town/v10/src/domain"
-	"github.com/git-town/git-town/v10/src/git"
+	"github.com/git-town/git-town/v11/src/domain"
+	"github.com/git-town/git-town/v11/src/git"
 )
 
 // EnterPerennialBranches lets the user update the perennial branches.
@@ -22,7 +22,7 @@ func EnterPerennialBranches(backend *git.BackendCommands, branches domain.Branch
 	}
 	newPerennialBranches := domain.NewLocalBranchNames(newPerennialBranchNames...)
 	branches.Types.PerennialBranches = newPerennialBranches
-	err = backend.Config.SetPerennialBranches(newPerennialBranches)
+	err = backend.GitTown.SetPerennialBranches(newPerennialBranches)
 	return branches.Types, err
 }
 

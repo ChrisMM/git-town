@@ -3,15 +3,15 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/git-town/git-town/v10/src/cli/flags"
-	"github.com/git-town/git-town/v10/src/config"
-	"github.com/git-town/git-town/v10/src/domain"
-	"github.com/git-town/git-town/v10/src/execute"
-	"github.com/git-town/git-town/v10/src/messages"
-	"github.com/git-town/git-town/v10/src/vm/interpreter"
-	"github.com/git-town/git-town/v10/src/vm/opcode"
-	"github.com/git-town/git-town/v10/src/vm/program"
-	"github.com/git-town/git-town/v10/src/vm/runstate"
+	"github.com/git-town/git-town/v11/src/cli/flags"
+	"github.com/git-town/git-town/v11/src/config/configdomain"
+	"github.com/git-town/git-town/v11/src/domain"
+	"github.com/git-town/git-town/v11/src/execute"
+	"github.com/git-town/git-town/v11/src/messages"
+	"github.com/git-town/git-town/v11/src/vm/interpreter"
+	"github.com/git-town/git-town/v11/src/vm/opcode"
+	"github.com/git-town/git-town/v11/src/vm/program"
+	"github.com/git-town/git-town/v11/src/vm/runstate"
 	"github.com/spf13/cobra"
 )
 
@@ -75,7 +75,7 @@ func executeRenameBranch(args []string, force, verbose bool) error {
 	}
 	return interpreter.Execute(interpreter.ExecuteArgs{
 		RunState:                &runState,
-		Run:                     &repo.Runner,
+		Run:                     repo.Runner,
 		Connector:               nil,
 		Verbose:                 verbose,
 		Lineage:                 config.lineage,
@@ -89,18 +89,18 @@ func executeRenameBranch(args []string, force, verbose bool) error {
 
 type renameBranchConfig struct {
 	branches       domain.Branches
-	isOffline      bool
-	lineage        config.Lineage
+	isOnline       configdomain.Online
+	lineage        configdomain.Lineage
 	mainBranch     domain.LocalBranchName
 	newBranch      domain.LocalBranchName
-	noPushHook     bool
+	noPushHook     configdomain.NoPushHook
 	oldBranch      domain.BranchInfo
 	previousBranch domain.LocalBranchName
 }
 
 func determineRenameBranchConfig(args []string, forceFlag bool, repo *execute.OpenRepoResult, verbose bool) (*renameBranchConfig, domain.BranchesSnapshot, domain.StashSnapshot, bool, error) {
-	lineage := repo.Runner.Config.Lineage(repo.Runner.Backend.Config.RemoveLocalConfigValue)
-	pushHook, err := repo.Runner.Config.PushHook()
+	lineage := repo.Runner.GitTown.Lineage(repo.Runner.Backend.GitTown.RemoveLocalConfigValue)
+	pushHook, err := repo.Runner.GitTown.PushHook()
 	if err != nil {
 		return nil, domain.EmptyBranchesSnapshot(), domain.EmptyStashSnapshot(), false, err
 	}
@@ -118,7 +118,7 @@ func determineRenameBranchConfig(args []string, forceFlag bool, repo *execute.Op
 		return nil, branchesSnapshot, stashSnapshot, exit, err
 	}
 	previousBranch := repo.Runner.Backend.PreviouslyCheckedOutBranch()
-	mainBranch := repo.Runner.Config.MainBranch()
+	mainBranch := repo.Runner.GitTown.MainBranch()
 	var oldBranchName domain.LocalBranchName
 	var newBranchName domain.LocalBranchName
 	if len(args) == 1 {
@@ -128,7 +128,7 @@ func determineRenameBranchConfig(args []string, forceFlag bool, repo *execute.Op
 		oldBranchName = domain.NewLocalBranchName(args[0])
 		newBranchName = domain.NewLocalBranchName(args[1])
 	}
-	if repo.Runner.Config.IsMainBranch(oldBranchName) {
+	if repo.Runner.GitTown.IsMainBranch(oldBranchName) {
 		return nil, branchesSnapshot, stashSnapshot, false, fmt.Errorf(messages.RenameMainBranch)
 	}
 	if !forceFlag {
@@ -143,7 +143,7 @@ func determineRenameBranchConfig(args []string, forceFlag bool, repo *execute.Op
 	if oldBranch == nil {
 		return nil, branchesSnapshot, stashSnapshot, false, fmt.Errorf(messages.BranchDoesntExist, oldBranchName)
 	}
-	if oldBranch.SyncStatus != domain.SyncStatusUpToDate {
+	if oldBranch.SyncStatus != domain.SyncStatusUpToDate && oldBranch.SyncStatus != domain.SyncStatusLocalOnly {
 		return nil, branchesSnapshot, stashSnapshot, false, fmt.Errorf(messages.RenameBranchNotInSync, oldBranchName)
 	}
 	if branches.All.HasLocalBranch(newBranchName) {
@@ -154,11 +154,11 @@ func determineRenameBranchConfig(args []string, forceFlag bool, repo *execute.Op
 	}
 	return &renameBranchConfig{
 		branches:       branches,
-		isOffline:      repo.IsOffline,
+		isOnline:       repo.IsOffline.ToOnline(),
 		lineage:        lineage,
 		mainBranch:     mainBranch,
 		newBranch:      newBranchName,
-		noPushHook:     !pushHook,
+		noPushHook:     pushHook.Negate(),
 		oldBranch:      *oldBranch,
 		previousBranch: previousBranch,
 	}, branchesSnapshot, stashSnapshot, false, err
@@ -181,17 +181,15 @@ func renameBranchProgram(config *renameBranchConfig) program.Program {
 	for _, child := range config.lineage.Children(config.oldBranch.LocalName) {
 		result.Add(&opcode.SetParent{Branch: child, Parent: config.newBranch})
 	}
-	if config.oldBranch.HasTrackingBranch() && !config.isOffline {
+	if config.oldBranch.HasTrackingBranch() && config.isOnline.Bool() {
 		result.Add(&opcode.CreateTrackingBranch{Branch: config.newBranch, NoPushHook: config.noPushHook})
 		result.Add(&opcode.DeleteTrackingBranch{Branch: config.oldBranch.RemoteName})
 	}
 	result.Add(&opcode.DeleteLocalBranch{Branch: config.oldBranch.LocalName, Force: false})
 	wrap(&result, wrapOptions{
-		RunInGitRoot:     false,
-		StashOpenChanges: false,
-		MainBranch:       config.mainBranch,
-		InitialBranch:    config.branches.Initial,
-		PreviousBranch:   config.previousBranch,
+		RunInGitRoot:             false,
+		StashOpenChanges:         false,
+		PreviousBranchCandidates: domain.LocalBranchNames{config.previousBranch, config.newBranch},
 	})
 	return result
 }

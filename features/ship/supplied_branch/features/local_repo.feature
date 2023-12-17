@@ -12,23 +12,21 @@ Feature: ship the supplied feature branch in a local repo
 
   Scenario: result
     Then it runs the commands
-      | BRANCH  | COMMAND                      |
-      | other   | git add -A                   |
-      |         | git stash                    |
-      |         | git checkout feature         |
-      | feature | git merge --no-edit main     |
-      |         | git checkout main            |
-      | main    | git merge --squash feature   |
-      |         | git commit -m "feature done" |
-      |         | git branch -D feature        |
-      |         | git checkout other           |
-      | other   | git stash pop                |
+      | BRANCH | COMMAND                      |
+      | other  | git add -A                   |
+      |        | git stash                    |
+      |        | git checkout main            |
+      | main   | git merge --squash feature   |
+      |        | git commit -m "feature done" |
+      |        | git branch -D feature        |
+      |        | git checkout other           |
+      | other  | git stash pop                |
     And the current branch is now "other"
     And the uncommitted file still exists
     And the branches are now
       | REPOSITORY | BRANCHES    |
       | local      | main, other |
-    And now these commits exist
+    And these commits exist now
       | BRANCH | LOCATION | MESSAGE      |
       | main   | local    | feature done |
     And this branch lineage exists now
@@ -42,10 +40,10 @@ Feature: ship the supplied feature branch in a local repo
       | other  | git add -A                                    |
       |        | git stash                                     |
       |        | git checkout main                             |
-      | main   | git reset --hard {{ sha 'Initial commit' }}   |
+      | main   | git reset --hard {{ sha 'initial commit' }}   |
       |        | git branch feature {{ sha 'feature commit' }} |
       |        | git checkout other                            |
       | other  | git stash pop                                 |
     And the current branch is now "other"
-    And now the initial commits exist
-    And the initial branches and hierarchy exist
+    And the initial commits exist
+    And the initial branches and lineage exist

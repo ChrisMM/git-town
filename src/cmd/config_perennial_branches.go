@@ -1,11 +1,11 @@
 package cmd
 
 import (
-	"github.com/git-town/git-town/v10/src/cli/dialog"
-	"github.com/git-town/git-town/v10/src/cli/flags"
-	"github.com/git-town/git-town/v10/src/cli/format"
-	"github.com/git-town/git-town/v10/src/cli/io"
-	"github.com/git-town/git-town/v10/src/execute"
+	"github.com/git-town/git-town/v11/src/cli/dialog"
+	"github.com/git-town/git-town/v11/src/cli/flags"
+	"github.com/git-town/git-town/v11/src/cli/format"
+	"github.com/git-town/git-town/v11/src/cli/io"
+	"github.com/git-town/git-town/v11/src/execute"
 	"github.com/spf13/cobra"
 )
 
@@ -57,7 +57,7 @@ func executeConfigPerennialBranches(verbose bool) error {
 	if err != nil {
 		return err
 	}
-	io.Println(format.StringSetting(repo.Runner.Config.PerennialBranches().Join("\n")))
+	io.Println(format.StringSetting(repo.Runner.GitTown.PerennialBranches().Join("\n")))
 	return nil
 }
 
@@ -73,8 +73,8 @@ func updatePerennialBranches(verbose bool) error {
 	if err != nil {
 		return err
 	}
-	lineage := repo.Runner.Config.Lineage(repo.Runner.Backend.Config.RemoveLocalConfigValue)
-	pushHook, err := repo.Runner.Config.PushHook()
+	lineage := repo.Runner.GitTown.Lineage(repo.Runner.Backend.GitTown.RemoveLocalConfigValue)
+	pushHook, err := repo.Runner.GitTown.PushHook()
 	if err != nil {
 		return err
 	}

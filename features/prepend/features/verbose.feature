@@ -21,7 +21,7 @@ Feature: display all executed Git commands
       | old    | frontend | git fetch --prune --tags                      |
       |        | backend  | git branch -vva                               |
       |        | backend  | git rev-parse --verify --abbrev-ref @{-1}     |
-      |        | backend  | git status --long --ignore-submodules                |
+      |        | backend  | git status --long --ignore-submodules         |
       | old    | frontend | git checkout main                             |
       | main   | frontend | git rebase origin/main                        |
       |        | backend  | git rev-list --left-right main...origin/main  |
@@ -36,15 +36,14 @@ Feature: display all executed Git commands
       |        | backend  | git show-ref --verify --quiet refs/heads/old  |
       |        | backend  | git config git-town-branch.old.parent parent  |
       | old    | frontend | git checkout parent                           |
-      |        | backend  | git show-ref --quiet refs/heads/old           |
-      |        | backend  | git rev-parse --verify --abbrev-ref @{-1}     |
+      |        | backend  | git show-ref --verify --quiet refs/heads/old  |
       |        | backend  | git config -lz --global                       |
       |        | backend  | git config -lz --local                        |
       |        | backend  | git branch -vva                               |
       |        | backend  | git stash list                                |
     And it prints:
       """
-      Ran 31 shell commands.
+      Ran 30 shell commands.
       """
     And the current branch is now "parent"
 
@@ -60,22 +59,18 @@ Feature: display all executed Git commands
       |        | backend  | git stash list                                   |
       |        | backend  | git branch -vva                                  |
       |        | backend  | git rev-parse --verify --abbrev-ref @{-1}        |
-      |        | backend  | git status --long --ignore-submodules                   |
+      |        | backend  | git status --long --ignore-submodules            |
+      |        | backend  | git remote get-url origin                        |
       |        | backend  | git config --unset git-town-branch.parent.parent |
       |        | backend  | git config git-town-branch.old.parent main       |
       | parent | frontend | git checkout old                                 |
       | old    | frontend | git branch -D parent                             |
-      |        | backend  | git show-ref --quiet refs/heads/old              |
-      |        | backend  | git show-ref --quiet refs/heads/parent           |
-      |        | backend  | git rev-parse --verify --abbrev-ref @{-1}        |
-      |        | backend  | git checkout old                                 |
-      |        | backend  | git checkout old                                 |
       |        | backend  | git config -lz --global                          |
       |        | backend  | git config -lz --local                           |
       |        | backend  | git branch -vva                                  |
       |        | backend  | git stash list                                   |
     And it prints:
       """
-      Ran 21 shell commands.
+      Ran 17 shell commands.
       """
     And the current branch is now "old"

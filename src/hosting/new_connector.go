@@ -1,14 +1,14 @@
 package hosting
 
 import (
-	"github.com/git-town/git-town/v10/src/config"
-	"github.com/git-town/git-town/v10/src/domain"
-	"github.com/git-town/git-town/v10/src/git/giturl"
-	"github.com/git-town/git-town/v10/src/hosting/bitbucket"
-	"github.com/git-town/git-town/v10/src/hosting/common"
-	"github.com/git-town/git-town/v10/src/hosting/gitea"
-	"github.com/git-town/git-town/v10/src/hosting/github"
-	"github.com/git-town/git-town/v10/src/hosting/gitlab"
+	"github.com/git-town/git-town/v11/src/config/configdomain"
+	"github.com/git-town/git-town/v11/src/domain"
+	"github.com/git-town/git-town/v11/src/git/giturl"
+	"github.com/git-town/git-town/v11/src/hosting/bitbucket"
+	"github.com/git-town/git-town/v11/src/hosting/common"
+	"github.com/git-town/git-town/v11/src/hosting/gitea"
+	"github.com/git-town/git-town/v11/src/hosting/github"
+	"github.com/git-town/git-town/v11/src/hosting/gitlab"
 )
 
 // NewConnector provides an instance of the code hosting connector to use based on the given gitConfig.
@@ -53,12 +53,12 @@ func NewConnector(args NewConnectorArgs) (Connector, error) {
 }
 
 type NewConnectorArgs struct {
-	HostingService  config.Hosting
+	HostingService  configdomain.Hosting
 	OriginURL       *giturl.Parts
 	GetSHAForBranch common.SHAForBranchFunc
-	GiteaAPIToken   string
-	GithubAPIToken  string
-	GitlabAPIToken  string
+	GiteaAPIToken   configdomain.GiteaToken
+	GithubAPIToken  configdomain.GitHubToken
+	GitlabAPIToken  configdomain.GitLabToken
 	MainBranch      domain.LocalBranchName
 	Log             common.Log
 }
