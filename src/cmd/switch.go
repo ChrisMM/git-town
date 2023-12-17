@@ -5,13 +5,12 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"strings"
 
-	"github.com/git-town/git-town/v10/src/cli/dialog"
-	"github.com/git-town/git-town/v10/src/cli/flags"
-	"github.com/git-town/git-town/v10/src/config"
-	"github.com/git-town/git-town/v10/src/domain"
-	"github.com/git-town/git-town/v10/src/execute"
+	"github.com/git-town/git-town/v11/src/cli/dialog"
+	"github.com/git-town/git-town/v11/src/cli/flags"
+	"github.com/git-town/git-town/v11/src/config/configdomain"
+	"github.com/git-town/git-town/v11/src/domain"
+	"github.com/git-town/git-town/v11/src/execute"
 	"github.com/spf13/cobra"
 )
 
@@ -45,29 +44,15 @@ func executeSwitch(verbose bool) error {
 	if err != nil {
 		return err
 	}
-	lineage := repo.Runner.Config.Lineage(repo.Runner.Backend.Config.RemoveLocalConfigValue)
-	pushHook, err := repo.Runner.Config.PushHook()
-	if err != nil {
-		return err
-	}
-	branches, _, _, exit, err := execute.LoadBranches(execute.LoadBranchesArgs{
-		Repo:                  repo,
-		Verbose:               verbose,
-		Fetch:                 false,
-		HandleUnfinishedState: true,
-		Lineage:               lineage,
-		PushHook:              pushHook,
-		ValidateIsConfigured:  true,
-		ValidateNoOpenChanges: false,
-	})
+	config, exit, err := determineSwitchConfig(repo, verbose)
 	if err != nil || exit {
 		return err
 	}
-	newBranch, validChoice, err := queryBranch(branches.Initial, lineage)
+	newBranch, validChoice, err := dialog.SwitchBranch(config.branches.Types.MainAndPerennials(), config.branches.Initial, config.lineage)
 	if err != nil {
 		return err
 	}
-	if validChoice && newBranch != branches.Initial {
+	if validChoice && newBranch != config.branches.Initial {
 		fmt.Println()
 		err = repo.Runner.Frontend.CheckoutBranch(newBranch)
 		if err != nil {
@@ -82,54 +67,29 @@ func executeSwitch(verbose bool) error {
 	return nil
 }
 
-// queryBranch lets the user select a new branch via a visual dialog.
-// Indicates via `validSelection` whether the user made a valid selection.
-func queryBranch(currentBranch domain.LocalBranchName, lineage config.Lineage) (selection domain.LocalBranchName, validSelection bool, err error) {
-	entries, err := createEntries(lineage, currentBranch)
-	if err != nil {
-		return domain.EmptyLocalBranchName(), false, err
-	}
-	choice, err := dialog.ModalSelect(entries, currentBranch.String())
-	if err != nil {
-		return domain.EmptyLocalBranchName(), false, err
-	}
-	if choice == nil {
-		return domain.EmptyLocalBranchName(), false, nil
-	}
-	return domain.NewLocalBranchName(*choice), true, nil
+type switchConfig struct {
+	branches domain.Branches
+	lineage  configdomain.Lineage
 }
 
-// createEntries provides all the entries for the branch dialog.
-func createEntries(lineage config.Lineage, currentBranch domain.LocalBranchName) (dialog.ModalSelectEntries, error) {
-	entries := dialog.ModalSelectEntries{}
-	var err error
-	for _, root := range lineage.Roots() {
-		entries, err = addEntryAndChildren(entries, root, 0, lineage)
-		if err != nil {
-			return nil, err
-		}
+func determineSwitchConfig(repo *execute.OpenRepoResult, verbose bool) (*switchConfig, bool, error) {
+	lineage := repo.Runner.GitTown.Lineage(repo.Runner.Backend.GitTown.RemoveLocalConfigValue)
+	pushHook, err := repo.Runner.GitTown.PushHook()
+	if err != nil {
+		return nil, false, err
 	}
-	if len(entries) == 0 {
-		entries = append(entries, dialog.ModalSelectEntry{
-			Text:  string(currentBranch),
-			Value: string(currentBranch),
-		})
-	}
-	return entries, nil
-}
-
-// addEntryAndChildren adds the given branch and all its child branches to the given entries collection.
-func addEntryAndChildren(entries dialog.ModalSelectEntries, branch domain.LocalBranchName, indent int, lineage config.Lineage) (dialog.ModalSelectEntries, error) {
-	entries = append(entries, dialog.ModalSelectEntry{
-		Text:  strings.Repeat("  ", indent) + branch.String(),
-		Value: branch.String(),
+	branches, _, _, exit, err := execute.LoadBranches(execute.LoadBranchesArgs{
+		Repo:                  repo,
+		Verbose:               verbose,
+		Fetch:                 false,
+		HandleUnfinishedState: true,
+		Lineage:               lineage,
+		PushHook:              pushHook,
+		ValidateIsConfigured:  true,
+		ValidateNoOpenChanges: false,
 	})
-	var err error
-	for _, child := range lineage.Children(branch) {
-		entries, err = addEntryAndChildren(entries, child, indent+1, lineage)
-		if err != nil {
-			return entries, err
-		}
-	}
-	return entries, nil
+	return &switchConfig{
+		branches: branches,
+		lineage:  lineage,
+	}, exit, err
 }

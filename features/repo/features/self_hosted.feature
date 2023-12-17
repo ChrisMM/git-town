@@ -4,9 +4,9 @@ Feature: self hosted servie
   Scenario Outline:
     Given tool "open" is installed
     And the origin is "git@self-hosted:git-town/git-town.git"
-    And Git Town setting "code-hosting-driver" is "<DRIVER>"
+    And Git Town setting "code-hosting-platform" is "<DRIVER>"
     When I run "git-town repo"
-    Then "open" launches a new pull request with this url in my browser:
+    Then "open" launches a new proposal with this url in my browser:
       """
       <REPO_URL>
       """
@@ -20,10 +20,10 @@ Feature: self hosted servie
 
   Scenario: GitLab with custom port
     Given the origin is "ssh://git@git.example.com:4022/a/b.git"
-    And Git Town setting "code-hosting-driver" is "gitlab"
+    And Git Town setting "code-hosting-platform" is "gitlab"
     And tool "open" is installed
     When I run "git-town repo"
-    Then "open" launches a new pull request with this url in my browser:
+    Then "open" launches a new proposal with this url in my browser:
       """
-      https://git.example.com:4022/a/b
+      https://git.example.com/a/b
       """

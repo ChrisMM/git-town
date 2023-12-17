@@ -3,12 +3,12 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/git-town/git-town/v10/src/cli/flags"
-	"github.com/git-town/git-town/v10/src/cli/print"
-	"github.com/git-town/git-town/v10/src/domain"
-	"github.com/git-town/git-town/v10/src/execute"
-	"github.com/git-town/git-town/v10/src/gohacks/slice"
-	"github.com/git-town/git-town/v10/src/messages"
+	"github.com/git-town/git-town/v11/src/cli/flags"
+	"github.com/git-town/git-town/v11/src/cli/print"
+	"github.com/git-town/git-town/v11/src/domain"
+	"github.com/git-town/git-town/v11/src/execute"
+	"github.com/git-town/git-town/v11/src/gohacks/slice"
+	"github.com/git-town/git-town/v11/src/messages"
 	"github.com/spf13/cobra"
 )
 
@@ -66,8 +66,8 @@ type diffParentConfig struct {
 
 // Does not return error because "Ensure" functions will call exit directly.
 func determineDiffParentConfig(args []string, repo *execute.OpenRepoResult, verbose bool) (*diffParentConfig, bool, error) {
-	lineage := repo.Runner.Config.Lineage(repo.Runner.Backend.Config.RemoveLocalConfigValue)
-	pushHook, err := repo.Runner.Config.PushHook()
+	lineage := repo.Runner.GitTown.Lineage(repo.Runner.Backend.GitTown.RemoveLocalConfigValue)
+	pushHook, err := repo.Runner.GitTown.PushHook()
 	if err != nil {
 		return nil, false, err
 	}
@@ -90,18 +90,18 @@ func determineDiffParentConfig(args []string, repo *execute.OpenRepoResult, verb
 			return nil, false, fmt.Errorf(messages.BranchDoesntExist, branch)
 		}
 	}
-	branchTypes := repo.Runner.Config.BranchTypes()
+	branchTypes := repo.Runner.GitTown.BranchTypes()
 	if !branchTypes.IsFeatureBranch(branch) {
 		return nil, false, fmt.Errorf(messages.DiffParentNoFeatureBranch)
 	}
-	mainBranch := repo.Runner.Config.MainBranch()
+	mainBranch := repo.Runner.GitTown.MainBranch()
 	branches.Types, lineage, err = execute.EnsureKnownBranchAncestry(branch, execute.EnsureKnownBranchAncestryArgs{
 		AllBranches:   branches.All,
 		BranchTypes:   branchTypes,
 		DefaultBranch: mainBranch,
 		Lineage:       lineage,
 		MainBranch:    mainBranch,
-		Runner:        &repo.Runner,
+		Runner:        repo.Runner,
 	})
 	if err != nil {
 		return nil, false, err

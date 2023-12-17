@@ -21,7 +21,7 @@ Feature: undoing an offline ship with additional commits to main
       it received additional commits in the meantime
       """
     And the current branch is now "main"
-    And now these commits exist
+    And these commits exist now
       | BRANCH  | LOCATION | MESSAGE           |
       | main    | local    | feature done      |
       |         |          | additional commit |
@@ -30,4 +30,4 @@ Feature: undoing an offline ship with additional commits to main
       | REPOSITORY | BRANCHES      |
       | local      | main          |
       | origin     | main, feature |
-    And the initial branch hierarchy exists
+    And the initial lineage exists

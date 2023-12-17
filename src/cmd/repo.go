@@ -3,16 +3,16 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/git-town/git-town/v10/src/browser"
-	"github.com/git-town/git-town/v10/src/cli/flags"
-	"github.com/git-town/git-town/v10/src/cli/log"
-	"github.com/git-town/git-town/v10/src/cli/print"
-	"github.com/git-town/git-town/v10/src/config"
-	"github.com/git-town/git-town/v10/src/domain"
-	"github.com/git-town/git-town/v10/src/execute"
-	"github.com/git-town/git-town/v10/src/hosting"
-	"github.com/git-town/git-town/v10/src/hosting/github"
-	"github.com/git-town/git-town/v10/src/validate"
+	"github.com/git-town/git-town/v11/src/browser"
+	"github.com/git-town/git-town/v11/src/cli/flags"
+	"github.com/git-town/git-town/v11/src/cli/log"
+	"github.com/git-town/git-town/v11/src/cli/print"
+	"github.com/git-town/git-town/v11/src/config/configdomain"
+	"github.com/git-town/git-town/v11/src/domain"
+	"github.com/git-town/git-town/v11/src/execute"
+	"github.com/git-town/git-town/v11/src/hosting"
+	"github.com/git-town/git-town/v11/src/hosting/github"
+	"github.com/git-town/git-town/v11/src/validate"
 	"github.com/spf13/cobra"
 )
 
@@ -35,7 +35,7 @@ func repoCommand() *cobra.Command {
 		Use:   "repo",
 		Args:  cobra.NoArgs,
 		Short: repoDesc,
-		Long:  long(repoDesc, fmt.Sprintf(repoHelp, config.KeyCodeHostingDriver, config.KeyCodeHostingOriginHostname)),
+		Long:  long(repoDesc, fmt.Sprintf(repoHelp, configdomain.KeyCodeHostingPlatform, configdomain.KeyCodeHostingOriginHostname)),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return executeRepo(readVerboseFlag(cmd))
 		},
@@ -70,7 +70,7 @@ func determineRepoConfig(repo *execute.OpenRepoResult) (*repoConfig, error) {
 	if err != nil {
 		return nil, err
 	}
-	branchTypes := repo.Runner.Config.BranchTypes()
+	branchTypes := repo.Runner.GitTown.BranchTypes()
 	branches := domain.Branches{
 		All:     branchesSnapshot.Branches,
 		Types:   branchTypes,
@@ -80,19 +80,19 @@ func determineRepoConfig(repo *execute.OpenRepoResult) (*repoConfig, error) {
 	if err != nil {
 		return nil, err
 	}
-	originURL := repo.Runner.Config.OriginURL()
-	hostingService, err := repo.Runner.Config.HostingService()
+	originURL := repo.Runner.GitTown.OriginURL()
+	hostingService, err := repo.Runner.GitTown.HostingService()
 	if err != nil {
 		return nil, err
 	}
-	mainBranch := repo.Runner.Config.MainBranch()
+	mainBranch := repo.Runner.GitTown.MainBranch()
 	connector, err := hosting.NewConnector(hosting.NewConnectorArgs{
 		HostingService:  hostingService,
 		GetSHAForBranch: repo.Runner.Backend.SHAForBranch,
 		OriginURL:       originURL,
-		GiteaAPIToken:   repo.Runner.Config.GiteaToken(),
-		GithubAPIToken:  github.GetAPIToken(repo.Runner.Config),
-		GitlabAPIToken:  repo.Runner.Config.GitLabToken(),
+		GiteaAPIToken:   repo.Runner.GitTown.GiteaToken(),
+		GithubAPIToken:  github.GetAPIToken(repo.Runner.GitTown.GitHubToken()),
+		GitlabAPIToken:  repo.Runner.GitTown.GitLabToken(),
 		MainBranch:      mainBranch,
 		Log:             log.Printing{},
 	})

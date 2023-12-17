@@ -12,21 +12,16 @@ Feature: ship a parent branch
 
   Scenario: result
     Then it runs the commands
-      | BRANCH | COMMAND                           |
-      | child  | git fetch --prune --tags          |
-      |        | git checkout main                 |
-      | main   | git rebase origin/main            |
-      |        | git checkout parent               |
-      | parent | git merge --no-edit origin/parent |
-      |        | git merge --no-edit main          |
-      |        | git checkout main                 |
-      | main   | git merge --squash parent         |
-      |        | git commit -m "parent done"       |
-      |        | git push                          |
-      |        | git branch -D parent              |
-      |        | git checkout child                |
+      | BRANCH | COMMAND                     |
+      | child  | git fetch --prune --tags    |
+      |        | git checkout main           |
+      | main   | git merge --squash parent   |
+      |        | git commit -m "parent done" |
+      |        | git push                    |
+      |        | git branch -D parent        |
+      |        | git checkout child          |
     And the current branch is now "child"
-    And now these commits exist
+    And these commits exist now
       | BRANCH | LOCATION      | MESSAGE       |
       | main   | local, origin | parent done   |
       | child  | local, origin | child commit  |
@@ -45,10 +40,10 @@ Feature: ship a parent branch
       |        | git branch parent {{ sha 'parent commit' }} |
       |        | git checkout child                          |
     And the current branch is now "child"
-    And now these commits exist
+    And these commits exist now
       | BRANCH | LOCATION      | MESSAGE              |
       | main   | local, origin | parent done          |
       |        |               | Revert "parent done" |
       | child  | local, origin | child commit         |
       | parent | local, origin | parent commit        |
-    And the initial branches and hierarchy exist
+    And the initial branches and lineage exist

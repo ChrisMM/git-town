@@ -23,8 +23,8 @@ Feature: on a feature branch in a repository with a submodule that has uncommitt
     When I run "git-town undo"
     Then it runs no commands
     And the current branch is still "feature"
-    And now these commits exist
+    And these commits exist now
       | BRANCH  | LOCATION      | MESSAGE         |
       | main    | local, origin | added submodule |
       | feature | local, origin | added submodule |
-    And the initial branches and hierarchy exist
+    And the initial branches and lineage exist

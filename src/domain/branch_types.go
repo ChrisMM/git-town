@@ -1,6 +1,6 @@
 package domain
 
-import "github.com/git-town/git-town/v10/src/gohacks/slice"
+import "github.com/git-town/git-town/v11/src/gohacks/slice"
 
 // BranchTypes answers questions about whether branches are long-lived or not.
 type BranchTypes struct {
@@ -18,6 +18,10 @@ func (self BranchTypes) IsMainBranch(branch LocalBranchName) bool {
 
 func (self BranchTypes) IsPerennialBranch(branch LocalBranchName) bool {
 	return slice.Contains(self.PerennialBranches, branch)
+}
+
+func (self BranchTypes) MainAndPerennials() LocalBranchNames {
+	return append(LocalBranchNames{self.MainBranch}, self.PerennialBranches...)
 }
 
 func EmptyBranchTypes() BranchTypes {

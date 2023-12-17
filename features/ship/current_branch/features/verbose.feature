@@ -5,6 +5,7 @@ Feature: display all executed Git commands
     And the commits
       | BRANCH  | LOCATION      | MESSAGE        |
       | feature | local, origin | feature commit |
+    And Git Town setting "sync-before-ship" is "true"
 
   Scenario: result
     When I run "git-town ship -m done --verbose"
@@ -16,14 +17,14 @@ Feature: display all executed Git commands
       |         | backend  | git rev-parse --show-toplevel                     |
       |         | backend  | git stash list                                    |
       |         | backend  | git branch -vva                                   |
-      |         | backend  | git status --long --ignore-submodules                    |
+      |         | backend  | git status --long --ignore-submodules             |
       |         | backend  | git remote                                        |
       | feature | frontend | git fetch --prune --tags                          |
       |         | backend  | git branch -vva                                   |
       |         | backend  | git rev-parse --verify --abbrev-ref @{-1}         |
-      |         | backend  | git status --long --ignore-submodules                    |
+      |         | backend  | git status --long --ignore-submodules             |
       |         | backend  | git remote get-url origin                         |
-      |         | backend  | git status --long --ignore-submodules                    |
+      |         | backend  | git status --long --ignore-submodules             |
       | feature | frontend | git checkout main                                 |
       | main    | frontend | git rebase origin/main                            |
       |         | backend  | git rev-list --left-right main...origin/main      |
@@ -44,17 +45,14 @@ Feature: display all executed Git commands
       |         | backend  | git log main..feature                             |
       | main    | frontend | git branch -D feature                             |
       |         | backend  | git config --unset git-town-branch.feature.parent |
-      |         | backend  | git show-ref --quiet refs/heads/feature           |
-      |         | backend  | git rev-parse --verify --abbrev-ref @{-1}         |
-      |         | backend  | git checkout main                                 |
-      |         | backend  | git checkout main                                 |
+      |         | backend  | git show-ref --verify --quiet refs/heads/feature  |
       |         | backend  | git config -lz --global                           |
       |         | backend  | git config -lz --local                            |
       |         | backend  | git branch -vva                                   |
       |         | backend  | git stash list                                    |
     And it prints:
       """
-      Ran 42 shell commands.
+      Ran 39 shell commands.
       """
     And the current branch is now "main"
 
@@ -70,7 +68,8 @@ Feature: display all executed Git commands
       |        | backend  | git stash list                                 |
       |        | backend  | git branch -vva                                |
       |        | backend  | git rev-parse --verify --abbrev-ref @{-1}      |
-      |        | backend  | git status --long --ignore-submodules                 |
+      |        | backend  | git status --long --ignore-submodules          |
+      |        | backend  | git remote get-url origin                      |
       |        | backend  | git config git-town-branch.feature.parent main |
       |        | backend  | git log --pretty=format:%h -10                 |
       | main   | frontend | git revert {{ sha 'done' }}                    |
@@ -79,8 +78,7 @@ Feature: display all executed Git commands
       |        | frontend | git branch feature {{ sha 'feature commit' }}  |
       |        | frontend | git push -u origin feature                     |
       |        | frontend | git checkout feature                           |
-      |        | backend  | git show-ref --quiet refs/heads/main           |
-      |        | backend  | git rev-parse --verify --abbrev-ref @{-1}      |
+      |        | backend  | git show-ref --verify --quiet refs/heads/      |
       |        | backend  | git config -lz --global                        |
       |        | backend  | git config -lz --local                         |
       |        | backend  | git branch -vva                                |

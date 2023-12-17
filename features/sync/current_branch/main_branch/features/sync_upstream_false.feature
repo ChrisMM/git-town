@@ -20,7 +20,7 @@ Feature: on the main branch with an upstream repo
       |        | git push --tags          |
     And all branches are now synchronized
     And the current branch is still "main"
-    And now these commits exist
+    And these commits exist now
       | BRANCH | LOCATION      | MESSAGE         |
       | main   | local, origin | origin commit   |
       |        |               | local commit    |
@@ -30,9 +30,9 @@ Feature: on the main branch with an upstream repo
     When I run "git-town undo"
     Then it runs no commands
     And the current branch is still "main"
-    And now these commits exist
+    And these commits exist now
       | BRANCH | LOCATION      | MESSAGE         |
       | main   | local, origin | origin commit   |
       |        |               | local commit    |
       |        | upstream      | upstream commit |
-    And the initial branches and hierarchy exist
+    And the initial branches and lineage exist

@@ -6,11 +6,11 @@ import (
 	"net/url"
 	"os"
 
-	"github.com/git-town/git-town/v10/src/config"
-	"github.com/git-town/git-town/v10/src/domain"
-	"github.com/git-town/git-town/v10/src/git/giturl"
-	"github.com/git-town/git-town/v10/src/hosting/common"
-	"github.com/git-town/git-town/v10/src/messages"
+	"github.com/git-town/git-town/v11/src/config/configdomain"
+	"github.com/git-town/git-town/v11/src/domain"
+	"github.com/git-town/git-town/v11/src/git/giturl"
+	"github.com/git-town/git-town/v11/src/hosting/common"
+	"github.com/git-town/git-town/v11/src/messages"
 	"github.com/google/go-github/v50/github"
 	"golang.org/x/oauth2"
 )
@@ -20,6 +20,7 @@ import (
 type Connector struct {
 	client *github.Client
 	common.Config
+	APIToken   configdomain.GitHubToken
 	MainBranch domain.LocalBranchName
 	log        common.Log
 }
@@ -60,7 +61,7 @@ func (self *Connector) NewProposalURL(branch, parentBranch domain.LocalBranchNam
 }
 
 func (self *Connector) RepositoryURL() string {
-	return fmt.Sprintf("https://%s/%s/%s", self.Hostname, self.Organization, self.Repository)
+	return fmt.Sprintf("https://%s/%s/%s", self.HostnameWithStandardPort(), self.Organization, self.Repository)
 }
 
 func (self *Connector) SquashMergeProposal(number int, message string) (mergeSHA domain.SHA, err error) {
@@ -102,29 +103,30 @@ func (self *Connector) UpdateProposalTarget(number int, target domain.LocalBranc
 // It first checks the GITHUB_TOKEN environment variable.
 // If that is not set, it checks the GITHUB_AUTH_TOKEN environment variable.
 // If that is not set, it checks the git config.
-func GetAPIToken(gitConfig gitTownConfig) string {
+func GetAPIToken(gitConfigToken configdomain.GitHubToken) configdomain.GitHubToken {
 	apiToken := os.ExpandEnv("$GITHUB_TOKEN")
-	if apiToken == "" {
-		apiToken = os.ExpandEnv("$GITHUB_AUTH_TOKEN")
+	if apiToken != "" {
+		return configdomain.GitHubToken(apiToken)
 	}
-	if apiToken == "" {
-		apiToken = gitConfig.GitHubToken()
+	apiToken = os.ExpandEnv("$GITHUB_AUTH_TOKEN")
+	if apiToken != "" {
+		return configdomain.GitHubToken(apiToken)
 	}
-	return apiToken
+	return gitConfigToken
 }
 
 // NewConnector provides a fully configured GithubConnector instance
 // if the current repo is hosted on Github, otherwise nil.
 func NewConnector(args NewConnectorArgs) (*Connector, error) {
-	if args.OriginURL == nil || (args.OriginURL.Host != "github.com" && args.HostingService != config.HostingGitHub) {
+	if args.OriginURL == nil || (args.OriginURL.Host != "github.com" && args.HostingService != configdomain.HostingGitHub) {
 		return nil, nil //nolint:nilnil
 	}
-	tokenSource := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: args.APIToken})
+	tokenSource := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: args.APIToken.String()})
 	httpClient := oauth2.NewClient(context.Background(), tokenSource)
 	return &Connector{
-		client: github.NewClient(httpClient),
+		client:   github.NewClient(httpClient),
+		APIToken: args.APIToken,
 		Config: common.Config{
-			APIToken:     args.APIToken,
 			Hostname:     args.OriginURL.Host,
 			Organization: args.OriginURL.Org,
 			Repository:   args.OriginURL.Repo,
@@ -135,9 +137,9 @@ func NewConnector(args NewConnectorArgs) (*Connector, error) {
 }
 
 type NewConnectorArgs struct {
-	HostingService config.Hosting
+	HostingService configdomain.Hosting
 	OriginURL      *giturl.Parts
-	APIToken       string
+	APIToken       configdomain.GitHubToken
 	MainBranch     domain.LocalBranchName
 	Log            common.Log
 }

@@ -1,8 +1,8 @@
 package cmd
 
 import (
-	"github.com/git-town/git-town/v10/src/cli/flags"
-	"github.com/git-town/git-town/v10/src/execute"
+	"github.com/git-town/git-town/v11/src/cli/flags"
+	"github.com/git-town/git-town/v11/src/execute"
 	"github.com/spf13/cobra"
 )
 
@@ -35,5 +35,5 @@ func executeConfigResetStatus(verbose bool) error {
 	if err != nil {
 		return err
 	}
-	return repo.Runner.Config.RemoveLocalGitConfiguration()
+	return repo.Runner.GitTown.RemoveLocalGitConfiguration()
 }

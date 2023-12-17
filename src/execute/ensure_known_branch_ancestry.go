@@ -1,10 +1,10 @@
 package execute
 
 import (
-	"github.com/git-town/git-town/v10/src/config"
-	"github.com/git-town/git-town/v10/src/domain"
-	"github.com/git-town/git-town/v10/src/git"
-	"github.com/git-town/git-town/v10/src/validate"
+	"github.com/git-town/git-town/v11/src/config/configdomain"
+	"github.com/git-town/git-town/v11/src/domain"
+	"github.com/git-town/git-town/v11/src/git"
+	"github.com/git-town/git-town/v11/src/validate"
 )
 
 // EnsureKnownBranchAncestry makes sure the lineage for the given branch is known.
@@ -13,7 +13,7 @@ import (
 //
 // The purpose of this function is to implement proper cache invalidation.
 // It ensures that all information derived from lineage gets updated when the lineage is updated.
-func EnsureKnownBranchAncestry(branch domain.LocalBranchName, args EnsureKnownBranchAncestryArgs) (domain.BranchTypes, config.Lineage, error) {
+func EnsureKnownBranchAncestry(branch domain.LocalBranchName, args EnsureKnownBranchAncestryArgs) (domain.BranchTypes, configdomain.Lineage, error) {
 	updated, err := validate.KnowsBranchAncestors(branch, validate.KnowsBranchAncestorsArgs{
 		AllBranches:   args.AllBranches,
 		Backend:       &args.Runner.Backend,
@@ -25,9 +25,9 @@ func EnsureKnownBranchAncestry(branch domain.LocalBranchName, args EnsureKnownBr
 		return args.BranchTypes, args.Lineage, err
 	}
 	if updated {
-		args.Runner.Config.Reload()
-		args.Lineage = args.Runner.Config.Lineage(args.Runner.Backend.Config.RemoveLocalConfigValue) // reload after ancestry change
-		args.BranchTypes = args.Runner.Config.BranchTypes()
+		args.Runner.GitTown.Reload()
+		args.Lineage = args.Runner.GitTown.Lineage(args.Runner.Backend.GitTown.RemoveLocalConfigValue) // reload after ancestry change
+		args.BranchTypes = args.Runner.GitTown.BranchTypes()
 	}
 	return args.BranchTypes, args.Lineage, nil
 }
@@ -36,7 +36,7 @@ type EnsureKnownBranchAncestryArgs struct {
 	AllBranches   domain.BranchInfos
 	BranchTypes   domain.BranchTypes
 	DefaultBranch domain.LocalBranchName
-	Lineage       config.Lineage
+	Lineage       configdomain.Lineage
 	MainBranch    domain.LocalBranchName
 	Runner        *git.ProdRunner
 }

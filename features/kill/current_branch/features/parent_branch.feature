@@ -9,7 +9,7 @@ Feature: delete a branch within a branch chain
       | alpha  | local, origin | alpha commit |
       | beta   | local, origin | beta commit  |
       | gamma  | local, origin | gamma commit |
-    And the current branch is "beta"
+    And the current branch is "beta" and the previous branch is "alpha"
     And an uncommitted file
     When I run "git-town kill"
 
@@ -31,7 +31,7 @@ Feature: delete a branch within a branch chain
     And the branches are now
       | REPOSITORY    | BRANCHES           |
       | local, origin | main, alpha, gamma |
-    And now these commits exist
+    And these commits exist now
       | BRANCH | LOCATION      | MESSAGE      |
       | alpha  | local, origin | alpha commit |
       | gamma  | local, origin | gamma commit |
@@ -50,5 +50,5 @@ Feature: delete a branch within a branch chain
       | beta   | git reset --soft HEAD^                                  |
     And the current branch is now "beta"
     And the uncommitted file still exists
-    And now the initial commits exist
-    And the initial branches and hierarchy exist
+    And the initial commits exist
+    And the initial branches and lineage exist

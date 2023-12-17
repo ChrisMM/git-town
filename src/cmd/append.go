@@ -3,16 +3,15 @@ package cmd
 import (
 	"slices"
 
-	"github.com/git-town/git-town/v10/src/cli/flags"
-	"github.com/git-town/git-town/v10/src/config"
-	"github.com/git-town/git-town/v10/src/domain"
-	"github.com/git-town/git-town/v10/src/execute"
-	"github.com/git-town/git-town/v10/src/gohacks"
-	"github.com/git-town/git-town/v10/src/messages"
-	"github.com/git-town/git-town/v10/src/vm/interpreter"
-	"github.com/git-town/git-town/v10/src/vm/opcode"
-	"github.com/git-town/git-town/v10/src/vm/program"
-	"github.com/git-town/git-town/v10/src/vm/runstate"
+	"github.com/git-town/git-town/v11/src/cli/flags"
+	"github.com/git-town/git-town/v11/src/config/configdomain"
+	"github.com/git-town/git-town/v11/src/domain"
+	"github.com/git-town/git-town/v11/src/execute"
+	"github.com/git-town/git-town/v11/src/messages"
+	"github.com/git-town/git-town/v11/src/vm/interpreter"
+	"github.com/git-town/git-town/v11/src/vm/opcode"
+	"github.com/git-town/git-town/v11/src/vm/program"
+	"github.com/git-town/git-town/v11/src/vm/runstate"
 	"github.com/spf13/cobra"
 )
 
@@ -67,7 +66,7 @@ func executeAppend(arg string, verbose bool) error {
 	}
 	return interpreter.Execute(interpreter.ExecuteArgs{
 		RunState:                &runState,
-		Run:                     &repo.Runner,
+		Run:                     repo.Runner,
 		Connector:               nil,
 		Verbose:                 verbose,
 		RootDir:                 repo.RootDir,
@@ -75,7 +74,7 @@ func executeAppend(arg string, verbose bool) error {
 		InitialConfigSnapshot:   repo.ConfigSnapshot,
 		InitialStashSnapshot:    initialStashSnapshot,
 		Lineage:                 config.lineage,
-		NoPushHook:              !config.pushHook,
+		NoPushHook:              config.pushHook.Negate(),
 	})
 }
 
@@ -84,24 +83,24 @@ type appendConfig struct {
 	branchesToSync            domain.BranchInfos
 	hasOpenChanges            bool
 	remotes                   domain.Remotes
-	isOffline                 bool
-	lineage                   config.Lineage
+	isOnline                  configdomain.Online
+	lineage                   configdomain.Lineage
 	mainBranch                domain.LocalBranchName
 	newBranchParentCandidates domain.LocalBranchNames
-	pushHook                  bool
+	pushHook                  configdomain.PushHook
 	parentBranch              domain.LocalBranchName
 	previousBranch            domain.LocalBranchName
-	pullBranchStrategy        config.PullBranchStrategy
-	shouldNewBranchPush       bool
-	shouldSyncUpstream        bool
-	syncStrategy              config.SyncStrategy
+	syncPerennialStrategy     configdomain.SyncPerennialStrategy
+	shouldNewBranchPush       configdomain.NewBranchPush
+	syncUpstream              configdomain.SyncUpstream
+	syncFeatureStrategy       configdomain.SyncFeatureStrategy
 	targetBranch              domain.LocalBranchName
 }
 
 func determineAppendConfig(targetBranch domain.LocalBranchName, repo *execute.OpenRepoResult, verbose bool) (*appendConfig, domain.BranchesSnapshot, domain.StashSnapshot, bool, error) {
-	lineage := repo.Runner.Config.Lineage(repo.Runner.Backend.Config.RemoveLocalConfigValue)
-	fc := gohacks.FailureCollector{}
-	pushHook := fc.Bool(repo.Runner.Config.PushHook())
+	lineage := repo.Runner.GitTown.Lineage(repo.Runner.Backend.GitTown.RemoveLocalConfigValue)
+	fc := configdomain.FailureCollector{}
+	pushHook := fc.PushHook(repo.Runner.GitTown.PushHook())
 	branches, branchesSnapshot, stashSnapshot, exit, err := execute.LoadBranches(execute.LoadBranchesArgs{
 		Repo:                  repo,
 		Verbose:               verbose,
@@ -117,10 +116,10 @@ func determineAppendConfig(targetBranch domain.LocalBranchName, repo *execute.Op
 	}
 	previousBranch := repo.Runner.Backend.PreviouslyCheckedOutBranch()
 	remotes := fc.Remotes(repo.Runner.Backend.Remotes())
-	mainBranch := repo.Runner.Config.MainBranch()
-	pullBranchStrategy := fc.PullBranchStrategy(repo.Runner.Config.PullBranchStrategy())
+	mainBranch := repo.Runner.GitTown.MainBranch()
+	syncPerennialStrategy := fc.SyncPerennialStrategy(repo.Runner.GitTown.SyncPerennialStrategy())
 	repoStatus := fc.RepoStatus(repo.Runner.Backend.RepoStatus())
-	shouldNewBranchPush := fc.Bool(repo.Runner.Config.ShouldNewBranchPush())
+	shouldNewBranchPush := fc.NewBranchPush(repo.Runner.GitTown.ShouldNewBranchPush())
 	if fc.Err != nil {
 		return nil, branchesSnapshot, stashSnapshot, false, fc.Err
 	}
@@ -136,15 +135,15 @@ func determineAppendConfig(targetBranch domain.LocalBranchName, repo *execute.Op
 		DefaultBranch: mainBranch,
 		Lineage:       lineage,
 		MainBranch:    mainBranch,
-		Runner:        &repo.Runner,
+		Runner:        repo.Runner,
 	})
 	if err != nil {
 		return nil, branchesSnapshot, stashSnapshot, false, err
 	}
 	branchNamesToSync := lineage.BranchAndAncestors(branches.Initial)
 	branchesToSync := fc.BranchesSyncStatus(branches.All.Select(branchNamesToSync))
-	syncStrategy := fc.SyncStrategy(repo.Runner.Config.SyncStrategy())
-	shouldSyncUpstream := fc.Bool(repo.Runner.Config.ShouldSyncUpstream())
+	syncFeatureStrategy := fc.SyncFeatureStrategy(repo.Runner.GitTown.SyncFeatureStrategy())
+	syncUpstream := fc.SyncUpstream(repo.Runner.GitTown.ShouldSyncUpstream())
 	initialAndAncestors := lineage.BranchAndAncestors(branches.Initial)
 	slices.Reverse(initialAndAncestors)
 	return &appendConfig{
@@ -152,17 +151,17 @@ func determineAppendConfig(targetBranch domain.LocalBranchName, repo *execute.Op
 		branchesToSync:            branchesToSync,
 		hasOpenChanges:            repoStatus.OpenChanges,
 		remotes:                   remotes,
-		isOffline:                 repo.IsOffline,
+		isOnline:                  repo.IsOffline.ToOnline(),
 		lineage:                   lineage,
 		mainBranch:                mainBranch,
 		newBranchParentCandidates: initialAndAncestors,
 		pushHook:                  pushHook,
 		parentBranch:              branches.Initial,
 		previousBranch:            previousBranch,
-		pullBranchStrategy:        pullBranchStrategy,
+		syncPerennialStrategy:     syncPerennialStrategy,
 		shouldNewBranchPush:       shouldNewBranchPush,
-		shouldSyncUpstream:        shouldSyncUpstream,
-		syncStrategy:              syncStrategy,
+		syncUpstream:              syncUpstream,
+		syncFeatureStrategy:       syncFeatureStrategy,
 		targetBranch:              targetBranch,
 	}, branchesSnapshot, stashSnapshot, false, fc.Err
 }
@@ -171,17 +170,18 @@ func appendProgram(config *appendConfig) program.Program {
 	prog := program.Program{}
 	for _, branch := range config.branchesToSync {
 		syncBranchProgram(branch, syncBranchProgramArgs{
-			branchTypes:        config.branches.Types,
-			isOffline:          config.isOffline,
-			lineage:            config.lineage,
-			program:            &prog,
-			remotes:            config.remotes,
-			mainBranch:         config.mainBranch,
-			pullBranchStrategy: config.pullBranchStrategy,
-			pushBranch:         true,
-			pushHook:           config.pushHook,
-			shouldSyncUpstream: config.shouldSyncUpstream,
-			syncStrategy:       config.syncStrategy,
+			branchInfos:           config.branches.All,
+			branchTypes:           config.branches.Types,
+			isOnline:              config.isOnline,
+			lineage:               config.lineage,
+			program:               &prog,
+			remotes:               config.remotes,
+			mainBranch:            config.mainBranch,
+			syncPerennialStrategy: config.syncPerennialStrategy,
+			pushBranch:            true,
+			pushHook:              config.pushHook,
+			syncUpstream:          config.syncUpstream,
+			syncFeatureStrategy:   config.syncFeatureStrategy,
 		})
 	}
 	prog.Add(&opcode.CreateBranchExistingParent{
@@ -195,15 +195,13 @@ func appendProgram(config *appendConfig) program.Program {
 		MainBranch: config.mainBranch,
 	})
 	prog.Add(&opcode.Checkout{Branch: config.targetBranch})
-	if config.remotes.HasOrigin() && config.shouldNewBranchPush && !config.isOffline {
-		prog.Add(&opcode.CreateTrackingBranch{Branch: config.targetBranch, NoPushHook: !config.pushHook})
+	if config.remotes.HasOrigin() && config.shouldNewBranchPush.Bool() && config.isOnline.Bool() {
+		prog.Add(&opcode.CreateTrackingBranch{Branch: config.targetBranch, NoPushHook: config.pushHook.Negate()})
 	}
 	wrap(&prog, wrapOptions{
-		RunInGitRoot:     true,
-		StashOpenChanges: config.hasOpenChanges,
-		MainBranch:       config.mainBranch,
-		InitialBranch:    config.branches.Initial,
-		PreviousBranch:   config.previousBranch,
+		RunInGitRoot:             true,
+		StashOpenChanges:         config.hasOpenChanges,
+		PreviousBranchCandidates: domain.LocalBranchNames{config.branches.Initial, config.previousBranch},
 	})
 	return prog
 }

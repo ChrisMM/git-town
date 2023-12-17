@@ -5,12 +5,13 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/git-town/git-town/v10/src/config"
-	"github.com/git-town/git-town/v10/src/domain"
-	"github.com/git-town/git-town/v10/src/git"
-	"github.com/git-town/git-town/v10/src/gohacks/cache"
-	"github.com/git-town/git-town/v10/test/commands"
-	testshell "github.com/git-town/git-town/v10/test/subshell"
+	"github.com/git-town/git-town/v11/src/config"
+	"github.com/git-town/git-town/v11/src/config/gitconfig"
+	"github.com/git-town/git-town/v11/src/domain"
+	"github.com/git-town/git-town/v11/src/git"
+	"github.com/git-town/git-town/v11/src/gohacks/cache"
+	"github.com/git-town/git-town/v11/test/commands"
+	testshell "github.com/git-town/git-town/v11/test/subshell"
 	"github.com/shoenig/test/must"
 )
 
@@ -38,7 +39,7 @@ func Create(t *testing.T) TestRuntime {
 	err = os.Mkdir(homeDir, 0o744)
 	must.NoError(t, err)
 	runtime := Initialize(workingDir, homeDir, homeDir)
-	err = runtime.Run("git", "commit", "--allow-empty", "-m", "Initial commit")
+	err = runtime.Run("git", "commit", "--allow-empty", "-m", "initial commit")
 	must.NoError(t, err)
 	return runtime
 }
@@ -49,9 +50,9 @@ func CreateGitTown(t *testing.T) TestRuntime {
 	t.Helper()
 	repo := Create(t)
 	repo.CreateBranch(domain.NewLocalBranchName("main"), domain.NewLocalBranchName("initial"))
-	err := repo.Config.SetMainBranch(domain.NewLocalBranchName("main"))
+	err := repo.GitTown.SetMainBranch(domain.NewLocalBranchName("main"))
 	must.NoError(t, err)
-	err = repo.Config.SetPerennialBranches(domain.LocalBranchNames{})
+	err = repo.GitTown.SetPerennialBranches(domain.LocalBranchNames{})
 	must.NoError(t, err)
 	return repo
 }
@@ -76,15 +77,12 @@ func New(workingDir, homeDir, binDir string) TestRuntime {
 		HomeDir:    homeDir,
 		BinDir:     binDir,
 	}
-	gitConfig := config.LoadGitConfig(&runner)
-	config := git.RepoConfig{
-		GitTown: config.NewGitTown(gitConfig, &runner),
-		DryRun:  false,
-	}
+	configGit := gitconfig.Access{Runner: &runner}
+	gitConfig := gitconfig.LoadFullCache(&configGit)
 	backendCommands := git.BackendCommands{
 		BackendRunner:      &runner,
-		Config:             &config,
-		CurrentBranchCache: &cache.LocalBranch{},
+		GitTown:            config.NewGitTown(gitConfig, &runner),
+		CurrentBranchCache: &cache.LocalBranchWithPrevious{},
 		RemotesCache:       &cache.Remotes{},
 	}
 	testCommands := commands.TestCommands{

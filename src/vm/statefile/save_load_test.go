@@ -7,12 +7,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/git-town/git-town/v10/src/config"
-	"github.com/git-town/git-town/v10/src/domain"
-	"github.com/git-town/git-town/v10/src/vm/opcode"
-	"github.com/git-town/git-town/v10/src/vm/program"
-	"github.com/git-town/git-town/v10/src/vm/runstate"
-	"github.com/git-town/git-town/v10/src/vm/statefile"
+	"github.com/git-town/git-town/v11/src/config/configdomain"
+	"github.com/git-town/git-town/v11/src/domain"
+	"github.com/git-town/git-town/v11/src/vm/opcode"
+	"github.com/git-town/git-town/v11/src/vm/program"
+	"github.com/git-town/git-town/v11/src/vm/runstate"
+	"github.com/git-town/git-town/v11/src/vm/statefile"
 	"github.com/shoenig/test/must"
 )
 
@@ -36,7 +36,6 @@ func TestLoadSave(t *testing.T) {
 		t.Parallel()
 		runState := runstate.RunState{
 			Command:      "command",
-			IsAbort:      true,
 			IsUndo:       true,
 			AbortProgram: program.Program{},
 			RunProgram: program.Program{
@@ -97,11 +96,12 @@ func TestLoadSave(t *testing.T) {
 					NoPushHook: true,
 				},
 				&opcode.Merge{Branch: domain.NewBranchName("branch")},
-				&opcode.MergeParent{CurrentBranch: domain.NewLocalBranchName("branch")},
+				&opcode.MergeParent{
+					CurrentBranch:               domain.NewLocalBranchName("branch"),
+					ParentActiveInOtherWorktree: true,
+				},
 				&opcode.PreserveCheckoutHistory{
-					InitialBranch:                     domain.NewLocalBranchName("initial-branch"),
-					InitialPreviouslyCheckedOutBranch: domain.NewLocalBranchName("initial-previous-branch"),
-					MainBranch:                        domain.NewLocalBranchName("main"),
+					PreviousBranchCandidates: domain.NewLocalBranchNames("previous"),
 				},
 				&opcode.PullCurrentBranch{},
 				&opcode.PushCurrentBranch{
@@ -110,7 +110,10 @@ func TestLoadSave(t *testing.T) {
 				},
 				&opcode.PushTags{},
 				&opcode.RebaseBranch{Branch: domain.NewBranchName("branch")},
-				&opcode.RebaseParent{CurrentBranch: domain.NewLocalBranchName("branch")},
+				&opcode.RebaseParent{
+					CurrentBranch:               domain.NewLocalBranchName("branch"),
+					ParentActiveInOtherWorktree: true,
+				},
 				&opcode.RemoveFromPerennialBranches{
 					Branch: domain.NewLocalBranchName("branch"),
 				},
@@ -118,10 +121,10 @@ func TestLoadSave(t *testing.T) {
 					Alias: config.AliasSync,
 				},
 				&opcode.RemoveGlobalConfig{
-					Key: config.KeyOffline,
+					Key: configdomain.KeyOffline,
 				},
 				&opcode.RemoveLocalConfig{
-					Key: config.KeyOffline,
+					Key: configdomain.KeyOffline,
 				},
 				&opcode.ResetCurrentBranchToSHA{
 					Hard:        true,
@@ -133,14 +136,18 @@ func TestLoadSave(t *testing.T) {
 					SHA: domain.NewSHA("123456"),
 				},
 				&opcode.SetGlobalConfig{
-					Key:   config.KeyOffline,
+					Key:   configdomain.KeyOffline,
 					Value: "1",
 				},
 				&opcode.SetLocalConfig{
-					Key:   config.KeyOffline,
+					Key:   configdomain.KeyOffline,
 					Value: "1",
 				},
 				&opcode.SetParent{
+					Branch: domain.NewLocalBranchName("branch"),
+					Parent: domain.NewLocalBranchName("parent"),
+				},
+				&opcode.SetParentIfBranchExists{
 					Branch: domain.NewLocalBranchName("branch"),
 					Parent: domain.NewLocalBranchName("parent"),
 				},
@@ -169,7 +176,6 @@ func TestLoadSave(t *testing.T) {
 		wantJSON := `
 {
   "Command": "command",
-  "IsAbort": true,
   "IsUndo": true,
   "AbortProgram": [],
   "RunProgram": [
@@ -311,15 +317,16 @@ func TestLoadSave(t *testing.T) {
     },
     {
       "data": {
-        "CurrentBranch": "branch"
+        "CurrentBranch": "branch",
+        "ParentActiveInOtherWorktree": true
       },
       "type": "MergeParent"
     },
     {
       "data": {
-        "InitialBranch": "initial-branch",
-        "InitialPreviouslyCheckedOutBranch": "initial-previous-branch",
-        "MainBranch": "main"
+        "PreviousBranchCandidates": [
+          "previous"
+        ]
       },
       "type": "PreserveCheckoutHistory"
     },
@@ -346,7 +353,8 @@ func TestLoadSave(t *testing.T) {
     },
     {
       "data": {
-        "CurrentBranch": "branch"
+        "CurrentBranch": "branch",
+        "ParentActiveInOtherWorktree": true
       },
       "type": "RebaseParent"
     },
@@ -412,6 +420,13 @@ func TestLoadSave(t *testing.T) {
         "Parent": "parent"
       },
       "type": "SetParent"
+    },
+    {
+      "data": {
+        "Branch": "branch",
+        "Parent": "parent"
+      },
+      "type": "SetParentIfBranchExists"
     },
     {
       "data": {},

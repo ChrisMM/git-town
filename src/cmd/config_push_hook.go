@@ -3,13 +3,14 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/git-town/git-town/v10/src/cli/flags"
-	"github.com/git-town/git-town/v10/src/cli/format"
-	"github.com/git-town/git-town/v10/src/cli/io"
-	"github.com/git-town/git-town/v10/src/config"
-	"github.com/git-town/git-town/v10/src/execute"
-	"github.com/git-town/git-town/v10/src/git"
-	"github.com/git-town/git-town/v10/src/messages"
+	"github.com/git-town/git-town/v11/src/cli/flags"
+	"github.com/git-town/git-town/v11/src/cli/format"
+	"github.com/git-town/git-town/v11/src/cli/io"
+	"github.com/git-town/git-town/v11/src/config/configdomain"
+	"github.com/git-town/git-town/v11/src/execute"
+	"github.com/git-town/git-town/v11/src/git"
+	"github.com/git-town/git-town/v11/src/gohacks"
+	"github.com/git-town/git-town/v11/src/messages"
 	"github.com/spf13/cobra"
 )
 
@@ -48,33 +49,34 @@ func executeConfigPushHook(args []string, global, verbose bool) error {
 		return err
 	}
 	if len(args) > 0 {
-		return setPushHook(args[0], global, &repo.Runner)
+		return setPushHook(args[0], global, repo.Runner)
 	}
-	return printPushHook(global, &repo.Runner)
+	return printPushHook(global, repo.Runner)
 }
 
 func printPushHook(globalFlag bool, run *git.ProdRunner) error {
-	var setting bool
+	var setting configdomain.PushHook
 	var err error
 	if globalFlag {
-		setting, err = run.Config.PushHookGlobal()
+		setting, err = run.GitTown.PushHookGlobal()
 	} else {
-		setting, err = run.Config.PushHook()
+		setting, err = run.GitTown.PushHook()
 	}
 	if err != nil {
 		return err
 	}
-	io.Println(format.Bool(setting))
+	io.Println(format.Bool(bool(setting)))
 	return nil
 }
 
 func setPushHook(text string, global bool, run *git.ProdRunner) error {
-	value, err := config.ParseBool(text)
+	valueBool, err := gohacks.ParseBool(text)
 	if err != nil {
 		return fmt.Errorf(messages.InputYesOrNo, text)
 	}
+	value := configdomain.PushHook(valueBool)
 	if global {
-		return run.Config.SetPushHookGlobally(value)
+		return run.GitTown.SetPushHookGlobally(value)
 	}
-	return run.Config.SetPushHookLocally(value)
+	return run.GitTown.SetPushHookLocally(value)
 }

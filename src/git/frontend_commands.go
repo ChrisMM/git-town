@@ -4,14 +4,14 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/git-town/git-town/v10/src/config"
-	"github.com/git-town/git-town/v10/src/domain"
-	"github.com/git-town/git-town/v10/src/messages"
+	"github.com/git-town/git-town/v11/src/config/configdomain"
+	"github.com/git-town/git-town/v11/src/domain"
+	"github.com/git-town/git-town/v11/src/messages"
 )
 
 type FrontendRunner interface {
 	Run(executable string, args ...string) error
-	RunMany([][]string) error
+	RunMany(commands [][]string) error
 }
 
 // FrontendCommands are Git commands that Git Town executes for the user to change the user's repository.
@@ -35,8 +35,8 @@ func (self *FrontendCommands) AbortRebase() error {
 }
 
 // AddGitAlias sets the given Git alias.
-func (self *FrontendCommands) AddGitAlias(alias config.Alias) error {
-	aliasKey := config.NewAliasKey(alias)
+func (self *FrontendCommands) AddGitAlias(alias configdomain.Alias) error {
+	aliasKey := configdomain.NewAliasKey(alias)
 	return self.Run("git", "config", "--global", aliasKey.String(), "town "+alias.String())
 }
 
@@ -88,7 +88,7 @@ func (self *FrontendCommands) CreateBranch(name domain.LocalBranchName, parent d
 }
 
 // CreateRemoteBranch creates a remote branch from the given local SHA.
-func (self *FrontendCommands) CreateRemoteBranch(localSHA domain.SHA, branch domain.LocalBranchName, noPushHook bool) error {
+func (self *FrontendCommands) CreateRemoteBranch(localSHA domain.SHA, branch domain.LocalBranchName, noPushHook configdomain.NoPushHook) error {
 	args := []string{"push"}
 	if noPushHook {
 		args = append(args, "--no-verify")
@@ -98,7 +98,7 @@ func (self *FrontendCommands) CreateRemoteBranch(localSHA domain.SHA, branch dom
 }
 
 // PushBranch pushes the branch with the given name to origin.
-func (self *FrontendCommands) CreateTrackingBranch(branch domain.LocalBranchName, remote domain.Remote, noPushHook bool) error {
+func (self *FrontendCommands) CreateTrackingBranch(branch domain.LocalBranchName, remote domain.Remote, noPushHook configdomain.NoPushHook) error {
 	args := []string{"push"}
 	if noPushHook {
 		args = append(args, "--no-verify")
@@ -149,7 +149,7 @@ func (self *FrontendCommands) FetchUpstream(branch domain.LocalBranchName) error
 }
 
 // PushBranch pushes the branch with the given name to origin.
-func (self *FrontendCommands) ForcePushBranch(noPushHook bool) error {
+func (self *FrontendCommands) ForcePushBranch(noPushHook configdomain.NoPushHook) error {
 	args := []string{"push", "--force-with-lease"}
 	if noPushHook {
 		args = append(args, "--no-verify")
@@ -160,8 +160,7 @@ func (self *FrontendCommands) ForcePushBranch(noPushHook bool) error {
 // MergeBranchNoEdit merges the given branch into the current branch,
 // using the default commit message.
 func (self *FrontendCommands) MergeBranchNoEdit(branch domain.BranchName) error {
-	err := self.Run("git", "merge", "--no-edit", branch.String())
-	return err
+	return self.Run("git", "merge", "--no-edit", branch.String())
 }
 
 // NavigateToDir changes into the root directory of the current repository.
@@ -180,7 +179,7 @@ func (self *FrontendCommands) Pull() error {
 }
 
 // PushCurrentBranch pushes the current branch to its tracking branch.
-func (self *FrontendCommands) PushCurrentBranch(noPushHook bool) error {
+func (self *FrontendCommands) PushCurrentBranch(noPushHook configdomain.NoPushHook) error {
 	args := []string{"push"}
 	if noPushHook {
 		args = append(args, "--no-verify")
@@ -199,7 +198,7 @@ func (self *FrontendCommands) Rebase(target domain.BranchName) error {
 }
 
 // RemoveGitAlias removes the given Git alias.
-func (self *FrontendCommands) RemoveGitAlias(alias config.Alias) error {
+func (self *FrontendCommands) RemoveGitAlias(alias configdomain.Alias) error {
 	return self.Run("git", "config", "--global", "--unset", "alias."+alias.String())
 }
 

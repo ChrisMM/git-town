@@ -11,29 +11,24 @@ Feature: provide the commit message via a CLI argument
 
   Scenario: result
     Then it runs the commands
-      | BRANCH  | COMMAND                            |
-      | other   | git fetch --prune --tags           |
-      |         | git add -A                         |
-      |         | git stash                          |
-      |         | git checkout main                  |
-      | main    | git rebase origin/main             |
-      |         | git checkout feature               |
-      | feature | git merge --no-edit origin/feature |
-      |         | git merge --no-edit main           |
-      |         | git checkout main                  |
-      | main    | git merge --squash feature         |
-      |         | git commit -m "feature done"       |
-      |         | git push                           |
-      |         | git push origin :feature           |
-      |         | git branch -D feature              |
-      |         | git checkout other                 |
-      | other   | git stash pop                      |
+      | BRANCH | COMMAND                      |
+      | other  | git fetch --prune --tags     |
+      |        | git add -A                   |
+      |        | git stash                    |
+      |        | git checkout main            |
+      | main   | git merge --squash feature   |
+      |        | git commit -m "feature done" |
+      |        | git push                     |
+      |        | git push origin :feature     |
+      |        | git branch -D feature        |
+      |        | git checkout other           |
+      | other  | git stash pop                |
     And the current branch is now "other"
     And the uncommitted file still exists
     And the branches are now
       | REPOSITORY    | BRANCHES    |
       | local, origin | main, other |
-    And now these commits exist
+    And these commits exist now
       | BRANCH | LOCATION      | MESSAGE      |
       | main   | local, origin | feature done |
     And this branch lineage exists now
@@ -54,9 +49,9 @@ Feature: provide the commit message via a CLI argument
       |        | git checkout other                            |
       | other  | git stash pop                                 |
     And the current branch is now "other"
-    And now these commits exist
+    And these commits exist now
       | BRANCH  | LOCATION      | MESSAGE               |
       | main    | local, origin | feature done          |
       |         |               | Revert "feature done" |
       | feature | local, origin | feature commit        |
-    And the initial branches and hierarchy exist
+    And the initial branches and lineage exist

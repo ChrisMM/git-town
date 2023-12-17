@@ -33,8 +33,8 @@ Feature: handle merge conflicts between feature branch and main branch
       """
     And it prints the error:
       """
-      To abort, run "git-town abort".
       To continue after having resolved conflicts, run "git-town continue".
+      To go back to where you started, run "git-town undo".
       To continue by skipping the current branch, run "git-town skip".
       """
     And the current branch is now "beta"
@@ -42,7 +42,7 @@ Feature: handle merge conflicts between feature branch and main branch
     And a merge is now in progress
 
   Scenario: abort
-    When I run "git-town abort"
+    When I run "git-town undo"
     Then it runs the commands
       | BRANCH | COMMAND                                        |
       | beta   | git merge --abort                              |
@@ -52,13 +52,13 @@ Feature: handle merge conflicts between feature branch and main branch
       |        | git checkout beta                              |
       | beta   | git reset --hard {{ sha 'local beta commit' }} |
       |        | git checkout main                              |
-      | main   | git reset --hard {{ sha 'Initial commit' }}    |
+      | main   | git reset --hard {{ sha 'initial commit' }}    |
       |        | git stash pop                                  |
     And the current branch is now "main"
     And the uncommitted file still exists
     And no merge is in progress
-    And now the initial commits exist
-    And the initial branches and hierarchy exist
+    And the initial commits exist
+    And the initial branches and lineage exist
 
   Scenario: skip
     When I run "git-town skip"
@@ -75,7 +75,7 @@ Feature: handle merge conflicts between feature branch and main branch
     And the current branch is now "main"
     And the uncommitted file still exists
     And no merge is in progress
-    And now these commits exist
+    And these commits exist now
       | BRANCH | LOCATION      | MESSAGE                                              |
       | main   | local, origin | main commit                                          |
       | alpha  | local, origin | alpha commit                                         |

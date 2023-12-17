@@ -3,10 +3,10 @@ package interpreter
 import (
 	"fmt"
 
-	"github.com/git-town/git-town/v10/src/cli/print"
-	"github.com/git-town/git-town/v10/src/messages"
-	"github.com/git-town/git-town/v10/src/undo"
-	"github.com/git-town/git-town/v10/src/vm/statefile"
+	"github.com/git-town/git-town/v11/src/cli/print"
+	"github.com/git-town/git-town/v11/src/messages"
+	"github.com/git-town/git-town/v11/src/undo"
+	"github.com/git-town/git-town/v11/src/vm/statefile"
 )
 
 // finished is called when executing all steps has successfully finished.
@@ -25,7 +25,7 @@ func finished(args ExecuteArgs) error {
 	}
 	args.RunState.UndoProgram.AddProgram(undoProgram)
 	args.RunState.UndoProgram.AddProgram(args.RunState.FinalUndoProgram)
-	if args.RunState.IsAbort || args.RunState.IsUndo {
+	if args.RunState.IsUndo {
 		err := statefile.Delete(args.RootDir)
 		if err != nil {
 			return fmt.Errorf(messages.RunstateDeleteProblem, err)

@@ -4,13 +4,12 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
-	"strings"
 
-	"github.com/git-town/git-town/v10/src/config"
-	"github.com/git-town/git-town/v10/src/domain"
-	"github.com/git-town/git-town/v10/src/git/giturl"
-	"github.com/git-town/git-town/v10/src/hosting/common"
-	"github.com/git-town/git-town/v10/src/messages"
+	"github.com/git-town/git-town/v11/src/config/configdomain"
+	"github.com/git-town/git-town/v11/src/domain"
+	"github.com/git-town/git-town/v11/src/git/giturl"
+	"github.com/git-town/git-town/v11/src/hosting/common"
+	"github.com/git-town/git-town/v11/src/messages"
 )
 
 // Connector provides access to the API of Bitbucket installations.
@@ -22,12 +21,11 @@ type Connector struct {
 // NewConnector provides a Bitbucket connector instance if the current repo is hosted on Bitbucket,
 // otherwise nil.
 func NewConnector(args NewConnectorArgs) (*Connector, error) {
-	if args.OriginURL == nil || (args.OriginURL.Host != "bitbucket.org" && args.HostingService != config.HostingBitbucket) {
+	if args.OriginURL == nil || (args.OriginURL.Host != "bitbucket.org" && args.HostingService != configdomain.HostingBitbucket) {
 		return nil, nil //nolint:nilnil
 	}
 	return &Connector{
 		Config: common.Config{
-			APIToken:     "",
 			Hostname:     args.OriginURL.Host,
 			Organization: args.OriginURL.Org,
 			Repository:   args.OriginURL.Repo,
@@ -38,7 +36,7 @@ func NewConnector(args NewConnectorArgs) (*Connector, error) {
 
 type NewConnectorArgs struct {
 	OriginURL       *giturl.Parts
-	HostingService  config.Hosting
+	HostingService  configdomain.Hosting
 	GetSHAForBranch common.SHAForBranchFunc
 }
 
@@ -55,18 +53,17 @@ func (self *Connector) HostingServiceName() string {
 }
 
 func (self *Connector) NewProposalURL(branch, parentBranch domain.LocalBranchName) (string, error) {
-	query := url.Values{}
-	branchSHA, err := self.getSHAForBranch(branch.BranchName())
-	if err != nil {
-		return "", fmt.Errorf(messages.ProposalURLProblem, branch, parentBranch, err)
-	}
-	query.Add("source", strings.Join([]string{self.Organization + "/" + self.Repository, branchSHA.TruncateTo(12).String(), branch.String()}, ":"))
-	query.Add("dest", strings.Join([]string{self.Organization + "/" + self.Repository, "", parentBranch.String()}, ":"))
-	return fmt.Sprintf("%s/pull-request/new?%s", self.RepositoryURL(), query.Encode()), nil
+	return fmt.Sprintf("%s/pull-requests/new?source=%s&dest=%s%%2F%s%%3A%s",
+			self.RepositoryURL(),
+			url.QueryEscape(branch.String()),
+			url.QueryEscape(self.Organization),
+			url.QueryEscape(self.Repository),
+			url.QueryEscape(parentBranch.String())),
+		nil
 }
 
 func (self *Connector) RepositoryURL() string {
-	return fmt.Sprintf("https://%s/%s/%s", self.Hostname, self.Organization, self.Repository)
+	return fmt.Sprintf("https://%s/%s/%s", self.HostnameWithStandardPort(), self.Organization, self.Repository)
 }
 
 func (self *Connector) SquashMergeProposal(_ int, _ string) (mergeSHA domain.SHA, err error) {

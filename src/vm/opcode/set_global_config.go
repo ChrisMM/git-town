@@ -1,16 +1,16 @@
 package opcode
 
 import (
-	"github.com/git-town/git-town/v10/src/config"
-	"github.com/git-town/git-town/v10/src/vm/shared"
+	"github.com/git-town/git-town/v11/src/config/configdomain"
+	"github.com/git-town/git-town/v11/src/vm/shared"
 )
 
 type SetGlobalConfig struct {
-	Key   config.Key
+	Key   configdomain.Key
 	Value string
 	undeclaredOpcodeMethods
 }
 
 func (self *SetGlobalConfig) Run(args shared.RunArgs) error {
-	return args.Runner.Config.SetGlobalConfigValue(self.Key, self.Value)
+	return args.Runner.GitTown.SetGlobalConfigValue(self.Key, self.Value)
 }

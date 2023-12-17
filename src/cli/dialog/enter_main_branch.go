@@ -4,8 +4,8 @@ import (
 	"fmt"
 
 	"github.com/fatih/color"
-	"github.com/git-town/git-town/v10/src/domain"
-	"github.com/git-town/git-town/v10/src/git"
+	"github.com/git-town/git-town/v11/src/domain"
+	"github.com/git-town/git-town/v11/src/git"
 )
 
 // EnterMainBranch lets the user select a new main branch for this repo.
@@ -20,7 +20,8 @@ func EnterMainBranch(localBranches domain.LocalBranchNames, oldMainBranch domain
 		return domain.EmptyLocalBranchName(), err
 	}
 	newMainBranch := domain.NewLocalBranchName(newMainBranchName)
-	return newMainBranch, backend.Config.SetMainBranch(newMainBranch)
+	err = backend.GitTown.SetMainBranch(newMainBranch)
+	return newMainBranch, err
 }
 
 func mainBranchPrompt(mainBranch domain.LocalBranchName) string {

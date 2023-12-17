@@ -4,12 +4,14 @@ import (
 	"fmt"
 	"net/url"
 
-	"github.com/git-town/git-town/v10/src/domain"
-	"github.com/git-town/git-town/v10/src/hosting/common"
+	"github.com/git-town/git-town/v11/src/config/configdomain"
+	"github.com/git-town/git-town/v11/src/domain"
+	"github.com/git-town/git-town/v11/src/hosting/common"
 )
 
 type Config struct {
 	common.Config
+	APIToken configdomain.GitLabToken
 }
 
 func (self *Config) DefaultProposalMessage(proposal domain.Proposal) string {
@@ -32,7 +34,7 @@ func (self *Config) RepositoryURL() string {
 }
 
 func (self *Config) baseURL() string {
-	return fmt.Sprintf("https://%s", self.Hostname)
+	return fmt.Sprintf("https://%s", self.HostnameWithStandardPort())
 }
 
 func (self *Config) projectPath() string {

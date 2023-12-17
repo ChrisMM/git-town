@@ -3,46 +3,47 @@ package undo_test
 import (
 	"testing"
 
-	"github.com/git-town/git-town/v10/src/config"
-	"github.com/git-town/git-town/v10/src/domain"
-	"github.com/git-town/git-town/v10/src/undo"
-	"github.com/git-town/git-town/v10/src/vm/opcode"
-	"github.com/git-town/git-town/v10/src/vm/program"
+	"github.com/git-town/git-town/v11/src/config/configdomain"
+	"github.com/git-town/git-town/v11/src/config/gitconfig"
+	"github.com/git-town/git-town/v11/src/domain"
+	"github.com/git-town/git-town/v11/src/undo"
+	"github.com/git-town/git-town/v11/src/vm/opcode"
+	"github.com/git-town/git-town/v11/src/vm/program"
 	"github.com/shoenig/test/must"
 )
 
 func TestConfigUndo(t *testing.T) {
 	t.Parallel()
 
-	t.Run("global config added", func(t *testing.T) {
+	t.Run("adding a value to the global cache", func(t *testing.T) {
 		t.Parallel()
 		before := undo.ConfigSnapshot{
 			Cwd: "/foo",
-			GitConfig: config.GitConfig{
-				Global: config.GitConfigCache{
-					config.KeyOffline: "0",
+			GitConfig: gitconfig.FullCache{
+				GlobalCache: gitconfig.SingleCache{
+					configdomain.KeyOffline: "0",
 				},
-				Local: config.GitConfigCache{},
+				LocalCache: gitconfig.SingleCache{},
 			},
 		}
 		after := undo.ConfigSnapshot{
 			Cwd: "/foo",
-			GitConfig: config.GitConfig{
-				Global: config.GitConfigCache{
-					config.KeyOffline:            "0",
-					config.KeyPullBranchStrategy: "1",
+			GitConfig: gitconfig.FullCache{
+				GlobalCache: gitconfig.SingleCache{
+					configdomain.KeyOffline:               "0",
+					configdomain.KeySyncPerennialStrategy: "1",
 				},
-				Local: config.GitConfigCache{},
+				LocalCache: gitconfig.SingleCache{},
 			},
 		}
 		haveDiff := undo.NewConfigDiffs(before, after)
 		wantDiff := undo.ConfigDiffs{
 			Global: undo.ConfigDiff{
-				Added: []config.Key{
-					config.KeyPullBranchStrategy,
+				Added: []configdomain.Key{
+					configdomain.KeySyncPerennialStrategy,
 				},
-				Removed: map[config.Key]string{},
-				Changed: map[config.Key]domain.Change[string]{},
+				Removed: map[configdomain.Key]string{},
+				Changed: map[configdomain.Key]domain.Change[string]{},
 			},
 			Local: undo.EmptyConfigDiff(),
 		}
@@ -50,126 +51,126 @@ func TestConfigUndo(t *testing.T) {
 		haveProgram := haveDiff.UndoProgram()
 		wantProgram := program.Program{
 			&opcode.RemoveGlobalConfig{
-				Key: config.KeyPullBranchStrategy,
+				Key: configdomain.KeySyncPerennialStrategy,
 			},
 		}
 		must.Eq(t, wantProgram, haveProgram)
 	})
 
-	t.Run("global config removed", func(t *testing.T) {
+	t.Run("removing a value from the global cache", func(t *testing.T) {
 		t.Parallel()
 		before := undo.ConfigSnapshot{
 			Cwd: "/foo",
-			GitConfig: config.GitConfig{
-				Global: config.GitConfigCache{
-					config.KeyOffline:            "0",
-					config.KeyPullBranchStrategy: "1",
+			GitConfig: gitconfig.FullCache{
+				GlobalCache: gitconfig.SingleCache{
+					configdomain.KeyOffline:               "0",
+					configdomain.KeySyncPerennialStrategy: "1",
 				},
-				Local: config.GitConfigCache{},
+				LocalCache: gitconfig.SingleCache{},
 			},
 		}
 		after := undo.ConfigSnapshot{
 			Cwd: "/foo",
-			GitConfig: config.GitConfig{
-				Global: config.GitConfigCache{
-					config.KeyOffline: "0",
+			GitConfig: gitconfig.FullCache{
+				GlobalCache: gitconfig.SingleCache{
+					configdomain.KeyOffline: "0",
 				},
-				Local: config.GitConfigCache{},
+				LocalCache: gitconfig.SingleCache{},
 			},
 		}
 		haveDiff := undo.NewConfigDiffs(before, after)
 		wantDiff := undo.ConfigDiffs{
 			Global: undo.ConfigDiff{
-				Added: []config.Key{},
-				Removed: map[config.Key]string{
-					config.KeyPullBranchStrategy: "1",
+				Added: []configdomain.Key{},
+				Removed: map[configdomain.Key]string{
+					configdomain.KeySyncPerennialStrategy: "1",
 				},
-				Changed: map[config.Key]domain.Change[string]{},
+				Changed: map[configdomain.Key]domain.Change[string]{},
 			},
 			Local: undo.ConfigDiff{
-				Added:   []config.Key{},
-				Removed: map[config.Key]string{},
-				Changed: map[config.Key]domain.Change[string]{},
+				Added:   []configdomain.Key{},
+				Removed: map[configdomain.Key]string{},
+				Changed: map[configdomain.Key]domain.Change[string]{},
 			},
 		}
 		must.Eq(t, wantDiff, haveDiff)
 		haveProgram := haveDiff.UndoProgram()
 		wantProgram := program.Program{
 			&opcode.SetGlobalConfig{
-				Key:   config.KeyPullBranchStrategy,
+				Key:   configdomain.KeySyncPerennialStrategy,
 				Value: "1",
 			},
 		}
 		must.Eq(t, wantProgram, haveProgram)
 	})
 
-	t.Run("global config changed", func(t *testing.T) {
+	t.Run("changing a value in the global cache", func(t *testing.T) {
 		t.Parallel()
 		before := undo.ConfigSnapshot{
 			Cwd: "/foo",
-			GitConfig: config.GitConfig{
-				Global: config.GitConfigCache{
-					config.KeyOffline: "0",
+			GitConfig: gitconfig.FullCache{
+				GlobalCache: gitconfig.SingleCache{
+					configdomain.KeyOffline: "0",
 				},
-				Local: config.GitConfigCache{},
+				LocalCache: gitconfig.SingleCache{},
 			},
 		}
 		after := undo.ConfigSnapshot{
 			Cwd: "/foo",
-			GitConfig: config.GitConfig{
-				Global: config.GitConfigCache{
-					config.KeyOffline: "1",
+			GitConfig: gitconfig.FullCache{
+				GlobalCache: gitconfig.SingleCache{
+					configdomain.KeyOffline: "1",
 				},
-				Local: config.GitConfigCache{},
+				LocalCache: gitconfig.SingleCache{},
 			},
 		}
 		haveDiff := undo.NewConfigDiffs(before, after)
 		wantDiff := undo.ConfigDiffs{
 			Global: undo.ConfigDiff{
-				Added:   []config.Key{},
-				Removed: map[config.Key]string{},
-				Changed: map[config.Key]domain.Change[string]{
-					config.KeyOffline: {
+				Added:   []configdomain.Key{},
+				Removed: map[configdomain.Key]string{},
+				Changed: map[configdomain.Key]domain.Change[string]{
+					configdomain.KeyOffline: {
 						Before: "0",
 						After:  "1",
 					},
 				},
 			},
 			Local: undo.ConfigDiff{
-				Added:   []config.Key{},
-				Removed: map[config.Key]string{},
-				Changed: map[config.Key]domain.Change[string]{},
+				Added:   []configdomain.Key{},
+				Removed: map[configdomain.Key]string{},
+				Changed: map[configdomain.Key]domain.Change[string]{},
 			},
 		}
 		must.Eq(t, wantDiff, haveDiff)
 		haveProgram := haveDiff.UndoProgram()
 		wantProgram := program.Program{
 			&opcode.SetGlobalConfig{
-				Key:   config.KeyOffline,
+				Key:   configdomain.KeyOffline,
 				Value: "0",
 			},
 		}
 		must.Eq(t, wantProgram, haveProgram)
 	})
 
-	t.Run("local config added", func(t *testing.T) {
+	t.Run("adding a value to the local cache", func(t *testing.T) {
 		t.Parallel()
 		before := undo.ConfigSnapshot{
 			Cwd: "/foo",
-			GitConfig: config.GitConfig{
-				Global: config.GitConfigCache{},
-				Local: config.GitConfigCache{
-					config.KeyOffline: "0",
+			GitConfig: gitconfig.FullCache{
+				GlobalCache: gitconfig.SingleCache{},
+				LocalCache: gitconfig.SingleCache{
+					configdomain.KeyOffline: "0",
 				},
 			},
 		}
 		after := undo.ConfigSnapshot{
 			Cwd: "/foo",
-			GitConfig: config.GitConfig{
-				Global: config.GitConfigCache{},
-				Local: config.GitConfigCache{
-					config.KeyOffline:            "0",
-					config.KeyPullBranchStrategy: "1",
+			GitConfig: gitconfig.FullCache{
+				GlobalCache: gitconfig.SingleCache{},
+				LocalCache: gitconfig.SingleCache{
+					configdomain.KeyOffline:               "0",
+					configdomain.KeySyncPerennialStrategy: "1",
 				},
 			},
 		}
@@ -177,102 +178,102 @@ func TestConfigUndo(t *testing.T) {
 		wantDiff := undo.ConfigDiffs{
 			Global: undo.EmptyConfigDiff(),
 			Local: undo.ConfigDiff{
-				Added: []config.Key{
-					config.KeyPullBranchStrategy,
+				Added: []configdomain.Key{
+					configdomain.KeySyncPerennialStrategy,
 				},
-				Removed: map[config.Key]string{},
-				Changed: map[config.Key]domain.Change[string]{},
+				Removed: map[configdomain.Key]string{},
+				Changed: map[configdomain.Key]domain.Change[string]{},
 			},
 		}
 		must.Eq(t, wantDiff, haveDiff)
 		haveProgram := haveDiff.UndoProgram()
 		wantProgram := program.Program{
 			&opcode.RemoveLocalConfig{
-				Key: config.KeyPullBranchStrategy,
+				Key: configdomain.KeySyncPerennialStrategy,
 			},
 		}
 		must.Eq(t, wantProgram, haveProgram)
 	})
 
-	t.Run("local config removed", func(t *testing.T) {
+	t.Run("removing a value from the local cache", func(t *testing.T) {
 		t.Parallel()
 		before := undo.ConfigSnapshot{
 			Cwd: "/foo",
-			GitConfig: config.GitConfig{
-				Global: config.GitConfigCache{},
-				Local: config.GitConfigCache{
-					config.KeyOffline:            "0",
-					config.KeyPullBranchStrategy: "1",
+			GitConfig: gitconfig.FullCache{
+				GlobalCache: gitconfig.SingleCache{},
+				LocalCache: gitconfig.SingleCache{
+					configdomain.KeyOffline:               "0",
+					configdomain.KeySyncPerennialStrategy: "1",
 				},
 			},
 		}
 		after := undo.ConfigSnapshot{
 			Cwd: "/foo",
-			GitConfig: config.GitConfig{
-				Global: config.GitConfigCache{},
-				Local: config.GitConfigCache{
-					config.KeyOffline: "0",
+			GitConfig: gitconfig.FullCache{
+				GlobalCache: gitconfig.SingleCache{},
+				LocalCache: gitconfig.SingleCache{
+					configdomain.KeyOffline: "0",
 				},
 			},
 		}
 		haveDiff := undo.NewConfigDiffs(before, after)
 		wantDiff := undo.ConfigDiffs{
 			Global: undo.ConfigDiff{
-				Added:   []config.Key{},
-				Removed: map[config.Key]string{},
-				Changed: map[config.Key]domain.Change[string]{},
+				Added:   []configdomain.Key{},
+				Removed: map[configdomain.Key]string{},
+				Changed: map[configdomain.Key]domain.Change[string]{},
 			},
 			Local: undo.ConfigDiff{
-				Added: []config.Key{},
-				Removed: map[config.Key]string{
-					config.KeyPullBranchStrategy: "1",
+				Added: []configdomain.Key{},
+				Removed: map[configdomain.Key]string{
+					configdomain.KeySyncPerennialStrategy: "1",
 				},
-				Changed: map[config.Key]domain.Change[string]{},
+				Changed: map[configdomain.Key]domain.Change[string]{},
 			},
 		}
 		must.Eq(t, wantDiff, haveDiff)
 		haveProgram := haveDiff.UndoProgram()
 		wantProgram := program.Program{
 			&opcode.SetLocalConfig{
-				Key:   config.KeyPullBranchStrategy,
+				Key:   configdomain.KeySyncPerennialStrategy,
 				Value: "1",
 			},
 		}
 		must.Eq(t, wantProgram, haveProgram)
 	})
 
-	t.Run("local config changed", func(t *testing.T) {
+	t.Run("changing a value in the local cache", func(t *testing.T) {
 		t.Parallel()
 		before := undo.ConfigSnapshot{
 			Cwd: "/foo",
-			GitConfig: config.GitConfig{
-				Global: config.GitConfigCache{},
-				Local: config.GitConfigCache{
-					config.KeyOffline: "0",
+			GitConfig: gitconfig.FullCache{
+				GlobalCache: gitconfig.SingleCache{},
+				LocalCache: gitconfig.SingleCache{
+					configdomain.KeyOffline: "0",
 				},
 			},
 		}
 		after := undo.ConfigSnapshot{
 			Cwd: "/foo",
-			GitConfig: config.GitConfig{
-				Global: config.GitConfigCache{},
-				Local: config.GitConfigCache{
-					config.KeyOffline: "1",
+			GitConfig: gitconfig.FullCache{
+				GlobalCache: gitconfig.SingleCache{},
+				LocalCache: gitconfig.SingleCache{
+					configdomain.KeyOffline: "1",
 				},
 			},
 		}
 		haveDiff := undo.NewConfigDiffs(before, after)
 		wantDiff := undo.ConfigDiffs{
 			Global: undo.ConfigDiff{
-				Added:   []config.Key{},
-				Removed: map[config.Key]string{},
-				Changed: map[config.Key]domain.Change[string]{},
+				Added:   []configdomain.Key{},
+				Removed: map[configdomain.Key]string{},
+				Changed: map[configdomain.Key]domain.Change[string]{},
 			},
 			Local: undo.ConfigDiff{
-				Added:   []config.Key{},
-				Removed: map[config.Key]string{},
-				Changed: map[config.Key]domain.Change[string]{
-					config.KeyOffline: {
+				Added:   []configdomain.Key{},
+				Removed: map[configdomain.Key]string{},
+				Changed: map[configdomain.Key]domain.Change[string]{
+					configdomain.KeyOffline: {
 						Before: "0",
 						After:  "1",
 					},
@@ -283,7 +284,7 @@ func TestConfigUndo(t *testing.T) {
 		haveProgram := haveDiff.UndoProgram()
 		wantProgram := program.Program{
 			&opcode.SetLocalConfig{
-				Key:   config.KeyOffline,
+				Key:   configdomain.KeyOffline,
 				Value: "0",
 			},
 		}
@@ -294,55 +295,55 @@ func TestConfigUndo(t *testing.T) {
 		t.Parallel()
 		before := undo.ConfigSnapshot{
 			Cwd: "/foo",
-			GitConfig: config.GitConfig{
-				Global: config.GitConfigCache{
-					config.KeyOffline:  "0",
-					config.KeyPushHook: "0",
+			GitConfig: gitconfig.FullCache{
+				GlobalCache: gitconfig.SingleCache{
+					configdomain.KeyOffline:  "0",
+					configdomain.KeyPushHook: "0",
 				},
-				Local: config.GitConfigCache{
-					config.KeyPerennialBranches: "prod",
-					config.KeyGithubToken:       "token",
+				LocalCache: gitconfig.SingleCache{
+					configdomain.KeyPerennialBranches: "prod",
+					configdomain.KeyGithubToken:       "token",
 				},
 			},
 		}
 		after := undo.ConfigSnapshot{
 			Cwd: "/foo",
-			GitConfig: config.GitConfig{
-				Global: config.GitConfigCache{
-					config.KeyOffline:            "1",
-					config.KeyPullBranchStrategy: "1",
+			GitConfig: gitconfig.FullCache{
+				GlobalCache: gitconfig.SingleCache{
+					configdomain.KeyOffline:               "1",
+					configdomain.KeySyncPerennialStrategy: "1",
 				},
-				Local: config.GitConfigCache{
-					config.KeyPerennialBranches: "prod qa",
-					config.KeyPushHook:          "1",
+				LocalCache: gitconfig.SingleCache{
+					configdomain.KeyPerennialBranches: "prod qa",
+					configdomain.KeyPushHook:          "1",
 				},
 			},
 		}
 		haveDiff := undo.NewConfigDiffs(before, after)
 		wantDiff := undo.ConfigDiffs{
 			Global: undo.ConfigDiff{
-				Added: []config.Key{
-					config.KeyPullBranchStrategy,
+				Added: []configdomain.Key{
+					configdomain.KeySyncPerennialStrategy,
 				},
-				Removed: map[config.Key]string{
-					config.KeyPushHook: "0",
+				Removed: map[configdomain.Key]string{
+					configdomain.KeyPushHook: "0",
 				},
-				Changed: map[config.Key]domain.Change[string]{
-					config.KeyOffline: {
+				Changed: map[configdomain.Key]domain.Change[string]{
+					configdomain.KeyOffline: {
 						Before: "0",
 						After:  "1",
 					},
 				},
 			},
 			Local: undo.ConfigDiff{
-				Added: []config.Key{
-					config.KeyPushHook,
+				Added: []configdomain.Key{
+					configdomain.KeyPushHook,
 				},
-				Removed: map[config.Key]string{
-					config.KeyGithubToken: "token",
+				Removed: map[configdomain.Key]string{
+					configdomain.KeyGithubToken: "token",
 				},
-				Changed: map[config.Key]domain.Change[string]{
-					config.KeyPerennialBranches: {
+				Changed: map[configdomain.Key]domain.Change[string]{
+					configdomain.KeyPerennialBranches: {
 						Before: "prod",
 						After:  "prod qa",
 					},
@@ -353,25 +354,25 @@ func TestConfigUndo(t *testing.T) {
 		haveProgram := haveDiff.UndoProgram()
 		wantProgram := program.Program{
 			&opcode.RemoveGlobalConfig{
-				Key: config.KeyPullBranchStrategy,
+				Key: configdomain.KeySyncPerennialStrategy,
 			},
 			&opcode.SetGlobalConfig{
-				Key:   config.KeyPushHook,
+				Key:   configdomain.KeyPushHook,
 				Value: "0",
 			},
 			&opcode.SetGlobalConfig{
-				Key:   config.KeyOffline,
+				Key:   configdomain.KeyOffline,
 				Value: "0",
 			},
 			&opcode.RemoveLocalConfig{
-				Key: config.KeyPushHook,
+				Key: configdomain.KeyPushHook,
 			},
 			&opcode.SetLocalConfig{
-				Key:   config.KeyGithubToken,
+				Key:   configdomain.KeyGithubToken,
 				Value: "token",
 			},
 			&opcode.SetLocalConfig{
-				Key:   config.KeyPerennialBranches,
+				Key:   configdomain.KeyPerennialBranches,
 				Value: "prod",
 			},
 		}

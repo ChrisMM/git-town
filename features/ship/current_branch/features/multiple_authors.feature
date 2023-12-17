@@ -13,21 +13,21 @@ Feature: ship a coworker's feature branch
     When I run "git-town ship -m 'feature done'" and answer the prompts:
       | PROMPT                                        | ANSWER  |
       | Please choose an author for the squash commit | [ENTER] |
-    And now these commits exist
+    And these commits exist now
       | BRANCH | LOCATION      | MESSAGE      | AUTHOR                            |
       | main   | local, origin | feature done | developer <developer@example.com> |
-    And no branch hierarchy exists now
+    And no lineage exists now
 
   Scenario: choose a coworker as the author
     When I run "git-town ship -m 'feature done'" and answer the prompts:
       | PROMPT                                        | ANSWER        |
       | Please choose an author for the squash commit | [DOWN][ENTER] |
-    And now these commits exist
+    And these commits exist now
       | BRANCH | LOCATION      | MESSAGE      | AUTHOR                          |
       | main   | local, origin | feature done | coworker <coworker@example.com> |
-    And no branch hierarchy exists now
+    And no lineage exists now
 
-  Scenario:  undo
+  Scenario: undo
     Given I ran "git-town ship -m 'feature done'" and answered the prompts:
       | PROMPT                                        | ANSWER  |
       | Please choose an author for the squash commit | [ENTER] |
@@ -36,15 +36,15 @@ Feature: ship a coworker's feature branch
       | BRANCH | COMMAND                                                       |
       | main   | git revert {{ sha 'feature done' }}                           |
       |        | git push                                                      |
-      |        | git push origin {{ sha 'Initial commit' }}:refs/heads/feature |
+      |        | git push origin {{ sha 'initial commit' }}:refs/heads/feature |
       |        | git branch feature {{ sha 'coworker commit' }}                |
       |        | git checkout feature                                          |
     And the current branch is now "feature"
-    And now these commits exist
+    And these commits exist now
       | BRANCH  | LOCATION      | MESSAGE               |
       | main    | local, origin | feature done          |
       |         |               | Revert "feature done" |
       | feature | local         | developer commit 1    |
       |         |               | developer commit 2    |
       |         |               | coworker commit       |
-    And the initial branches and hierarchy exist
+    And the initial branches and lineage exist

@@ -23,24 +23,19 @@ sudo port install git-town
 
 ## Windows
 
-The easiest way to install Git Town on Windows is to
-[download the Windows installer](https://github.com/git-town/git-town/releases/download/v10.0.3/git-town_10.0.3_windows_intel_64.msi)
-and run it.
+You can install Git Town on Windows using:
 
-You can also install Git Town via [scoop](https://scoop.sh):
-
-```
-scoop install git-town
-```
-
-You can also [install Git Town manually](#manual-installation) or
-[compile from source](#compile-from-source).
+- [Chocolatey](https://community.chocolatey.org/packages/git-town):
+  `choco install git-town`
+- [Scoop](https://scoop.sh/#/apps?q=git+town): `scoop install git-town`
+- the
+  [Git Town Windows installer](https://github.com/git-town/git-town/releases/download/v11.1.0/git-town_windows_intel_64.msi)
 
 If you use the Windows Subsystem for Linux, please install
 [wsl-open](https://www.npmjs.com/package/wsl-open) to allow the commands
 [git town repo](https://git-town.com/commands/repo.md) and
-[git town new-pull-request](https://git-town.com/commands/new-pull-request.md)
-to open a browser window for you.
+[git town propose](https://git-town.com/commands/propose.md) to open a browser
+window for you.
 
 ## Linux
 
@@ -49,7 +44,7 @@ On Debian-based systems,
 matching your CPU architecture and run:
 
 ```
-sudo apt-get install git-town_10.0.3_linux_intel_64.deb
+sudo apt-get install git-town_linux_intel_64.deb
 ```
 
 On RedHat-based systems
@@ -57,7 +52,7 @@ On RedHat-based systems
 matching your CPU architecture and run
 
 ```
-rpm -i git-town_10.0.3_linux_intel_64.rpm
+rpm -i git-town_linux_intel_64.rpm
 ```
 
 On Arch Linux, install the

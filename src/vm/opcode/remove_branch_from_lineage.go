@@ -1,8 +1,8 @@
 package opcode
 
 import (
-	"github.com/git-town/git-town/v10/src/domain"
-	"github.com/git-town/git-town/v10/src/vm/shared"
+	"github.com/git-town/git-town/v11/src/domain"
+	"github.com/git-town/git-town/v11/src/vm/shared"
 )
 
 type RemoveBranchFromLineage struct {
@@ -14,15 +14,15 @@ func (self *RemoveBranchFromLineage) Run(args shared.RunArgs) error {
 	parent := args.Lineage.Parent(self.Branch)
 	for _, child := range args.Lineage.Children(self.Branch) {
 		if parent.IsEmpty() {
-			args.Runner.Backend.Config.RemoveParent(child)
+			args.Runner.Backend.GitTown.RemoveParent(child)
 		} else {
-			err := args.Runner.Backend.Config.SetParent(child, parent)
+			err := args.Runner.Backend.GitTown.SetParent(child, parent)
 			if err != nil {
 				return err
 			}
 		}
 	}
-	args.Runner.Backend.Config.RemoveParent(self.Branch)
+	args.Runner.Backend.GitTown.RemoveParent(self.Branch)
 	args.Lineage.RemoveBranch(self.Branch)
 	return nil
 }

@@ -3,13 +3,14 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/git-town/git-town/v10/src/cli/flags"
-	"github.com/git-town/git-town/v10/src/cli/format"
-	"github.com/git-town/git-town/v10/src/cli/io"
-	"github.com/git-town/git-town/v10/src/config"
-	"github.com/git-town/git-town/v10/src/execute"
-	"github.com/git-town/git-town/v10/src/git"
-	"github.com/git-town/git-town/v10/src/messages"
+	"github.com/git-town/git-town/v11/src/cli/flags"
+	"github.com/git-town/git-town/v11/src/cli/format"
+	"github.com/git-town/git-town/v11/src/cli/io"
+	"github.com/git-town/git-town/v11/src/config/configdomain"
+	"github.com/git-town/git-town/v11/src/execute"
+	"github.com/git-town/git-town/v11/src/git"
+	"github.com/git-town/git-town/v11/src/gohacks"
+	"github.com/git-town/git-town/v11/src/messages"
 	"github.com/spf13/cobra"
 )
 
@@ -49,30 +50,30 @@ func executeConfigPushNewBranches(args []string, global, verbose bool) error {
 		return err
 	}
 	if len(args) > 0 {
-		return setPushNewBranches(args[0], global, &repo.Runner)
+		return setPushNewBranches(args[0], global, repo.Runner)
 	}
-	return printPushNewBranches(global, &repo.Runner)
+	return printPushNewBranches(global, repo.Runner)
 }
 
 func printPushNewBranches(globalFlag bool, run *git.ProdRunner) error {
-	var setting bool
+	var setting configdomain.NewBranchPush
 	var err error
 	if globalFlag {
-		setting, err = run.Config.ShouldNewBranchPushGlobal()
+		setting, err = run.GitTown.ShouldNewBranchPushGlobal()
 	} else {
-		setting, err = run.Config.ShouldNewBranchPush()
+		setting, err = run.GitTown.ShouldNewBranchPush()
 	}
 	if err != nil {
 		return err
 	}
-	io.Println(format.Bool(setting))
+	io.Println(format.Bool(setting.Bool()))
 	return nil
 }
 
 func setPushNewBranches(text string, globalFlag bool, run *git.ProdRunner) error {
-	value, err := config.ParseBool(text)
+	boolValue, err := gohacks.ParseBool(text)
 	if err != nil {
 		return fmt.Errorf(messages.InputYesOrNo, text)
 	}
-	return run.Config.SetNewBranchPush(value, globalFlag)
+	return run.GitTown.SetNewBranchPush(configdomain.NewBranchPush(boolValue), globalFlag)
 }

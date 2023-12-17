@@ -6,16 +6,17 @@ import (
 	"net/url"
 
 	"code.gitea.io/sdk/gitea"
-	"github.com/git-town/git-town/v10/src/config"
-	"github.com/git-town/git-town/v10/src/domain"
-	"github.com/git-town/git-town/v10/src/git/giturl"
-	"github.com/git-town/git-town/v10/src/hosting/common"
-	"github.com/git-town/git-town/v10/src/messages"
+	"github.com/git-town/git-town/v11/src/config/configdomain"
+	"github.com/git-town/git-town/v11/src/domain"
+	"github.com/git-town/git-town/v11/src/git/giturl"
+	"github.com/git-town/git-town/v11/src/hosting/common"
+	"github.com/git-town/git-town/v11/src/messages"
 	"golang.org/x/oauth2"
 )
 
 type Connector struct {
-	client *gitea.Client
+	client   *gitea.Client
+	APIToken configdomain.GiteaToken
 	common.Config
 	log common.Log
 }
@@ -25,7 +26,7 @@ func (self *Connector) DefaultProposalMessage(proposal domain.Proposal) string {
 }
 
 func (self *Connector) FindProposal(branch, target domain.LocalBranchName) (*domain.Proposal, error) {
-	openPullRequests, err := self.client.ListRepoPullRequests(self.Organization, self.Repository, gitea.ListPullRequestsOptions{
+	openPullRequests, _, err := self.client.ListRepoPullRequests(self.Organization, self.Repository, gitea.ListPullRequestsOptions{
 		ListOptions: gitea.ListOptions{
 			PageSize: 50,
 		},
@@ -60,7 +61,7 @@ func (self *Connector) NewProposalURL(branch, parentBranch domain.LocalBranchNam
 }
 
 func (self *Connector) RepositoryURL() string {
-	return fmt.Sprintf("https://%s/%s/%s", self.Hostname, self.Organization, self.Repository)
+	return fmt.Sprintf("https://%s/%s/%s", self.HostnameWithStandardPort(), self.Organization, self.Repository)
 }
 
 func (self *Connector) SquashMergeProposal(number int, message string) (mergeSHA domain.SHA, err error) {
@@ -68,7 +69,7 @@ func (self *Connector) SquashMergeProposal(number int, message string) (mergeSHA
 		return domain.EmptySHA(), fmt.Errorf(messages.ProposalNoNumberGiven)
 	}
 	title, body := common.CommitMessageParts(message)
-	_, err = self.client.MergePullRequest(self.Organization, self.Repository, int64(number), gitea.MergePullRequestOption{
+	_, _, err = self.client.MergePullRequest(self.Organization, self.Repository, int64(number), gitea.MergePullRequestOption{
 		Style:   gitea.MergeStyleSquash,
 		Title:   title,
 		Message: body,
@@ -76,7 +77,7 @@ func (self *Connector) SquashMergeProposal(number int, message string) (mergeSHA
 	if err != nil {
 		return domain.EmptySHA(), err
 	}
-	pullRequest, err := self.client.GetPullRequest(self.Organization, self.Repository, int64(number))
+	pullRequest, _, err := self.client.GetPullRequest(self.Organization, self.Repository, int64(number))
 	if err != nil {
 		return domain.EmptySHA(), err
 	}
@@ -110,16 +111,16 @@ func FilterPullRequests(pullRequests []*gitea.PullRequest, organization string, 
 // NewGiteaConfig provides Gitea configuration data if the current repo is hosted on Gitea,
 // otherwise nil.
 func NewConnector(args NewConnectorArgs) (*Connector, error) {
-	if args.OriginURL == nil || (args.OriginURL.Host != "gitea.com" && args.HostingService != config.HostingGitea) {
+	if args.OriginURL == nil || (args.OriginURL.Host != "gitea.com" && args.HostingService != configdomain.HostingGitea) {
 		return nil, nil //nolint:nilnil
 	}
-	tokenSource := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: args.APIToken})
+	tokenSource := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: args.APIToken.String()})
 	httpClient := oauth2.NewClient(context.Background(), tokenSource)
 	giteaClient := gitea.NewClientWithHTTP(fmt.Sprintf("https://%s", args.OriginURL.Host), httpClient)
 	return &Connector{
-		client: giteaClient,
+		APIToken: args.APIToken,
+		client:   giteaClient,
 		Config: common.Config{
-			APIToken:     args.APIToken,
 			Hostname:     args.OriginURL.Host,
 			Organization: args.OriginURL.Org,
 			Repository:   args.OriginURL.Repo,
@@ -130,7 +131,7 @@ func NewConnector(args NewConnectorArgs) (*Connector, error) {
 
 type NewConnectorArgs struct {
 	OriginURL      *giturl.Parts
-	HostingService config.Hosting
-	APIToken       string
+	HostingService configdomain.Hosting
+	APIToken       configdomain.GiteaToken
 	Log            common.Log
 }

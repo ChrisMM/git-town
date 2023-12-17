@@ -55,9 +55,9 @@ Feature: multiple shipped parent branches in a lineage
       | feature-3 | git reset --hard {{ sha 'feature-3 commit' }}     |
       |           | git push --force-with-lease                       |
       |           | git checkout main                                 |
-      | main      | git reset --hard {{ sha 'Initial commit' }}       |
+      | main      | git reset --hard {{ sha 'initial commit' }}       |
       |           | git branch feature-1 {{ sha 'feature-1 commit' }} |
       |           | git branch feature-2 {{ sha 'feature-2 commit' }} |
       |           | git checkout feature-3                            |
     And the current branch is still "feature-3"
-    And the initial branches and hierarchy exist
+    And the initial branches and lineage exist

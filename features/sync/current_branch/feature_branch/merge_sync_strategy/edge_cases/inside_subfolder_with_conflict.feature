@@ -31,8 +31,8 @@ Feature: sync inside a folder that doesn't exist on the main branch
       exit status 1
       """
 
-  Scenario: abort
-    When I run "git-town abort" in the "new_folder" folder
+  Scenario: undo
+    When I run "git-town undo" in the "new_folder" folder
     Then it runs the commands
       | BRANCH  | COMMAND           |
       | current | git merge --abort |
@@ -40,8 +40,8 @@ Feature: sync inside a folder that doesn't exist on the main branch
     And the current branch is still "current"
     And the uncommitted file still exists
     And no merge is in progress
-    And now the initial commits exist
-    And the initial branches and hierarchy exist
+    And the initial commits exist
+    And the initial branches and lineage exist
 
   Scenario: continue with unresolved conflict
     When I run "git-town continue" in the "new_folder" folder
@@ -72,7 +72,7 @@ Feature: sync inside a folder that doesn't exist on the main branch
     And the current branch is still "current"
     And the uncommitted file still exists
     And no merge is in progress
-    And now these commits exist
+    And these commits exist now
       | BRANCH  | LOCATION      | MESSAGE                          |
       | main    | local, origin | conflicting main commit          |
       | current | local, origin | conflicting current commit       |

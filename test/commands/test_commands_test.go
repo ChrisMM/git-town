@@ -7,11 +7,11 @@ import (
 	"testing"
 
 	"github.com/acarl005/stripansi"
-	"github.com/git-town/git-town/v10/src/domain"
-	"github.com/git-town/git-town/v10/test/filesystem"
-	"github.com/git-town/git-town/v10/test/fixture"
-	"github.com/git-town/git-town/v10/test/git"
-	"github.com/git-town/git-town/v10/test/testruntime"
+	"github.com/git-town/git-town/v11/src/domain"
+	"github.com/git-town/git-town/v11/test/filesystem"
+	"github.com/git-town/git-town/v11/test/fixture"
+	"github.com/git-town/git-town/v11/test/git"
+	"github.com/git-town/git-town/v11/test/testruntime"
 	"github.com/shoenig/test/must"
 )
 
@@ -180,8 +180,8 @@ func TestTestCommands(t *testing.T) {
 		must.NoError(t, err)
 		want := domain.NewLocalBranchNames("main", "initial", "p1", "p2")
 		must.Eq(t, want, branches)
-		runtime.Config.Reload()
-		branchTypes := runtime.Config.BranchTypes()
+		runtime.GitTown.Reload()
+		branchTypes := runtime.GitTown.BranchTypes()
 		must.True(t, branchTypes.IsPerennialBranch(domain.NewLocalBranchName("p1")))
 		must.True(t, branchTypes.IsPerennialBranch(domain.NewLocalBranchName("p2")))
 	})
@@ -289,15 +289,28 @@ func TestTestCommands(t *testing.T) {
 
 	t.Run("HasGitTownConfigNow", func(t *testing.T) {
 		t.Parallel()
-		runtime := testruntime.Create(t)
-		res := runtime.HasGitTownConfigNow()
-		must.False(t, res)
-		runtime.CreateBranch(domain.NewLocalBranchName("main"), domain.NewLocalBranchName("initial"))
-		err := runtime.CreateFeatureBranch(domain.NewLocalBranchName("foo"))
-		must.NoError(t, err)
-		res = runtime.HasGitTownConfigNow()
-		must.NoError(t, err)
-		must.True(t, res)
+		t.Run("no config exists", func(t *testing.T) {
+			t.Parallel()
+			runtime := testruntime.Create(t)
+			res := runtime.HasGitTownConfigNow()
+			must.False(t, res)
+		})
+		t.Run("the main branch is configured", func(t *testing.T) {
+			runtime := testruntime.Create(t)
+			must.NoError(t, runtime.GitTown.SetMainBranch(domain.NewLocalBranchName("main")))
+			must.True(t, runtime.HasGitTownConfigNow())
+		})
+		t.Run("the perennial branches are configured", func(t *testing.T) {
+			runtime := testruntime.Create(t)
+			must.NoError(t, runtime.GitTown.SetPerennialBranches(domain.NewLocalBranchNames("qa")))
+			must.True(t, runtime.HasGitTownConfigNow())
+		})
+		t.Run("branch lineage is configured", func(t *testing.T) {
+			runtime := testruntime.Create(t)
+			runtime.CreateBranch(domain.NewLocalBranchName("main"), domain.NewLocalBranchName("initial"))
+			must.NoError(t, runtime.CreateFeatureBranch(domain.NewLocalBranchName("foo")))
+			must.True(t, runtime.HasGitTownConfigNow())
+		})
 	})
 
 	t.Run("LocalBranchesMainFirst", func(t *testing.T) {

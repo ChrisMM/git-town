@@ -1,7 +1,7 @@
 Feature: nested feature branches
 
   Background:
-    Given Git Town setting "sync-strategy" is "rebase"
+    Given Git Town setting "sync-feature-strategy" is "rebase"
     And a feature branch "parent"
     And a feature branch "child" as a child of "parent"
     And the commits
@@ -32,7 +32,7 @@ Feature: nested feature branches
       |        | git push --force-with-lease |
     And all branches are now synchronized
     And the current branch is still "child"
-    And now these commits exist
+    And these commits exist now
       | BRANCH | LOCATION      | MESSAGE              |
       | main   | local, origin | origin main commit   |
       |        |               | local main commit    |
@@ -58,7 +58,7 @@ Feature: nested feature branches
       |        | git push --force-with-lease origin {{ sha-in-origin-before-run 'origin parent commit' }}:parent |
       |        | git checkout child                                                                              |
     And the current branch is still "child"
-    And now these commits exist
+    And these commits exist now
       | BRANCH | LOCATION      | MESSAGE              |
       | main   | local, origin | origin main commit   |
       |        |               | local main commit    |
@@ -66,4 +66,4 @@ Feature: nested feature branches
       |        | origin        | origin child commit  |
       | parent | local         | local parent commit  |
       |        | origin        | origin parent commit |
-    And the initial branches and hierarchy exist
+    And the initial branches and lineage exist

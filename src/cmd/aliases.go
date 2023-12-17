@@ -4,15 +4,15 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/git-town/git-town/v10/src/cli/flags"
-	"github.com/git-town/git-town/v10/src/config"
-	"github.com/git-town/git-town/v10/src/domain"
-	"github.com/git-town/git-town/v10/src/git"
-	"github.com/git-town/git-town/v10/src/messages"
-	"github.com/git-town/git-town/v10/src/vm/interpreter"
-	"github.com/git-town/git-town/v10/src/vm/opcode"
-	"github.com/git-town/git-town/v10/src/vm/program"
-	"github.com/git-town/git-town/v10/src/vm/runstate"
+	"github.com/git-town/git-town/v11/src/cli/flags"
+	"github.com/git-town/git-town/v11/src/config/configdomain"
+	"github.com/git-town/git-town/v11/src/domain"
+	"github.com/git-town/git-town/v11/src/git"
+	"github.com/git-town/git-town/v11/src/messages"
+	"github.com/git-town/git-town/v11/src/vm/interpreter"
+	"github.com/git-town/git-town/v11/src/vm/opcode"
+	"github.com/git-town/git-town/v11/src/vm/program"
+	"github.com/git-town/git-town/v11/src/vm/runstate"
 	"github.com/spf13/cobra"
 )
 
@@ -66,9 +66,9 @@ func aliasesProgram(arg string) program.Program {
 	prog := program.Program{}
 	switch strings.ToLower(arg) {
 	case "add":
-		addAliasesProgram(&prog)
+		return addAliases(repo.Runner)
 	case "remove":
-		removeAliasesProgram(&prog, &repo.Runner)
+		return removeAliases(repo.Runner)
 	default:
 		return fmt.Errorf(messages.InputAddOrRemove, arg)
 	}
@@ -76,14 +76,14 @@ func aliasesProgram(arg string) program.Program {
 }
 
 func addAliasesProgram(prog *program.Program) {
-	for _, alias := range config.Aliases() {
+	for _, alias := range configdomain.Aliases() {
 		prog.Add(&opcode.AddGitAlias{Alias: alias})
 	}
 }
 
 func removeAliasesProgram(prog *program.Program, run *git.ProdRunner) {
-	for _, alias := range config.Aliases() {
-		existingAlias := run.Config.GitAlias(alias)
+	for _, alias := range configdomain.Aliases() {
+		existingAlias := run.GitTown.GitAlias(alias)
 		if existingAlias == "town "+alias.String() {
 			prog.Add(&opcode.RemoveGitAlias{Alias: alias})
 		}
