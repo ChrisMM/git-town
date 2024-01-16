@@ -25,9 +25,7 @@ func main() {
 
 func displayUsage() {
 	fmt.Println(`
-This tool verifies that all Go struct definitions and usages list the struct properties sorted alphabetically.
-
-Usage: lint <command>
+This tool verifies that all Go struct definitions and usages contain the struct properties sorted alphabetically.
 
 Available commands:
    run   Lints the source code files
@@ -68,7 +66,7 @@ type issue struct {
 	msg  string
 }
 
-var structDefRE regexp.Regexp = *regexp.MustCompile(`(?ms)^type \w+ struct \{\n.*?\n\}`)
+var structDefRE = *regexp.MustCompile(`(?ms)^type \w+ struct \{\n.*?\n\}`)
 
 func lintFileContent(content string) []string {
 	return []string{}

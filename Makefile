@@ -64,6 +64,7 @@ help:  # prints all available targets
 lint: tools/rta@${RTA_VERSION}  # runs only the linters
 	@git diff --check &
 	@${CURDIR}/tools/node_modules/.bin/gherkin-lint &
+	@go run tools/lint_sorted_alphabetically/main.go test &
 	@tools/rta actionlint &
 	@tools/ensure_no_files_with_dashes.sh &
 	@tools/rta --available alphavet && go vet "-vettool=$(shell tools/rta --which alphavet)" $(shell go list ./... | grep -v src/cmd | grep -v /v11/tools/) &
