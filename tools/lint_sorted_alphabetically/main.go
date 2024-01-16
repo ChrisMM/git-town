@@ -49,7 +49,7 @@ func lintFiles() {
 		if err != nil {
 			return err
 		}
-		issues := lintFileContent(string(content))
+		issues := lintFileContent(string(content), path)
 		for _, issue := range issues {
 			fmt.Printf("%s  %s", path, issue)
 		}
@@ -69,7 +69,7 @@ type issue struct {
 
 var structDefRE = *regexp.MustCompile(`(?ms)^type \w+ struct \{\n.*?\n\}`)
 
-func lintFileContent(content string) []string {
+func lintFileContent(content, filepath string) []string {
 	return []string{}
 }
 
@@ -109,13 +109,30 @@ calling(MyStruct{
 	name: "one",
 })
 `
-	have := lintFileContent(give)
+	have := lintFileContent(give, "myfile.go")
 	want := []string{}
+	assertDeepEqual(want, have, "correct code")
+}
+
+func testUnsortedDeclaration() {
+	give := `
+package test
+
+var a = 1
+
+type MyStruct struct {
+	name string
+	count int
+}
+`
+	have := lintFileContent(give, "myfile.go")
+	want := []string{`myfile.go: unsorted fields in definition of struct "MyStruct"`}
 	assertDeepEqual(want, have, "correct code")
 }
 
 func runTests() {
 	testCorrectCode()
+	testUnsortedDeclaration()
 	fmt.Println()
 }
 
