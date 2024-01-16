@@ -5,6 +5,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"reflect"
 	"regexp"
 	"strings"
 )
@@ -87,38 +88,54 @@ func isGoFile(path string) bool {
  * TESTS
  */
 
-func testFindStructDefinitions() {
+func testCorrectCode() {
 	give := `
 package test
 
 var a = 1
 
 type MyStruct struct {
-	name string
 	count int
+	name string
 }
 
-func other() {
-	fmt.Println("other")
-}`
-	have := findStructDefinitions(give)
-	assertEqual(1, len(have), "findStructDefinitions")
-	want := `
-type MyStruct struct {
-	name string
-	count int
-}`[1:]
-	assertEqual(want, have[0], "testFindStructDefinitions")
+var global = MyStruct{
+	count: 1,
+	name: "one",
+}
+
+calling(MyStruct{
+	count: 1,
+	name: "one",
+})
+`
+	have := lintFileContent(give)
+	want := []string{}
+	assertDeepEqual(want, have, "correct code")
 }
 
 func runTests() {
-	testFindStructDefinitions()
+	testCorrectCode()
 	fmt.Println()
 }
 
 func assertEqual[T comparable](want, have T, testName string) {
 	fmt.Print(".")
 	if have != want {
+		fmt.Printf("\nTEST FAILURE in %q\n", testName)
+		fmt.Println("\n\nWANT")
+		fmt.Println("--------------------------------------------------------")
+		fmt.Println(want)
+		fmt.Println("\n\nHAVE")
+		fmt.Println("--------------------------------------------------------")
+		fmt.Println(have)
+		os.Exit(1)
+	}
+}
+
+func assertDeepEqual[T any](want, have T, testName string) {
+	fmt.Print(".")
+	if !reflect.DeepEqual(want, have) {
 		fmt.Printf("\nTEST FAILURE in %q\n", testName)
 		fmt.Println("\n\nWANT")
 		fmt.Println("--------------------------------------------------------")
