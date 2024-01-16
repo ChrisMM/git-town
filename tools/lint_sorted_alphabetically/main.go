@@ -127,12 +127,45 @@ type MyStruct struct {
 `
 	have := lintFileContent(give, "myfile.go")
 	want := []string{`myfile.go: unsorted fields in definition of struct "MyStruct"`}
-	assertDeepEqual(want, have, "correct code")
+	assertDeepEqual(want, have, "declaration")
+}
+
+func testUnsortedGlobalVariable() {
+	give := `
+package test
+
+var a = 1
+
+var global = MyStruct{
+	name: "one",
+	count: 1,
+}
+`
+	have := lintFileContent(give, "myfile.go")
+	want := []string{`myfile.go: unsorted fields in usage of "MyStruct"`}
+	assertDeepEqual(want, have, "global variable")
+}
+
+func testUnsortedUsage() {
+	give := `
+package test
+
+var a = 1
+
+calling(MyStruct{
+	name: "one",
+	count: 1,
+})
+`
+	have := lintFileContent(give, "myfile.go")
+	want := []string{`myfile.go: unsorted fields in usage of "MyStruct"`}
+	assertDeepEqual(want, have, "usage")
 }
 
 func runTests() {
 	testCorrectCode()
 	testUnsortedDeclaration()
+	testUnsortedUsage()
 	fmt.Println()
 }
 
